@@ -1,4 +1,4 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, computed, inject, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   IonAvatar,
@@ -8,13 +8,14 @@ import {
   IonInput,
   IonLabel,
   IonNote,
-  IonSelect,
-  IonSelectOption,
   IonSpinner,
   IonTextarea,
+  ModalController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { addOutline, closeCircle, personCircleOutline } from 'ionicons/icons';
+import { addOutline, chevronDown, closeCircle, personCircleOutline } from 'ionicons/icons';
+
+import { WHOLE_PROVINCE, openGeoPicker } from '../../components/geo-picker/geo-picker.component';
 
 import { SessionUser } from '../../models/session.model';
 import { AuthService } from '../../services/auth.service';
@@ -30,9 +31,6 @@ interface Area {
   districtId: number | null;
 }
 
-/** Whole-province choice in the district select */
-const WHOLE_PROVINCE = 0;
-
 @Component({
   selector: 'app-seeker-profile-form',
   templateUrl: 'seeker-profile-form.component.html',
@@ -46,19 +44,17 @@ const WHOLE_PROVINCE = 0;
     IonInput,
     IonLabel,
     IonNote,
-    IonSelect,
-    IonSelectOption,
     IonSpinner,
     IonTextarea,
   ],
 })
 export class SeekerProfileFormComponent {
   private readonly auth = inject(AuthService);
+  private readonly modals = inject(ModalController);
   readonly geo = inject(GeoService);
 
   readonly saved = output<SessionUser>();
 
-  readonly WHOLE_PROVINCE = WHOLE_PROVINCE;
   readonly maxBirthDate = yearsAgo(MIN_AGE);
 
   readonly form = inject(FormBuilder).nonNullable.group({
@@ -76,6 +72,15 @@ export class SeekerProfileFormComponent {
   readonly pickDistricts = signal<number[]>([]);
   readonly areasTouched = signal(false);
 
+  readonly pickProvinceLabel = computed(() => {
+    const id = this.pickProvince();
+    return id ? this.geo.provinceName(id) : '';
+  });
+  readonly pickDistrictsLabel = computed(() => {
+    const ids = this.pickDistricts().filter((id) => id !== WHOLE_PROVINCE);
+    return ids.length ? ids.map((id) => this.geo.districtName(id)).join(', ') : 'ทั้งจังหวัด';
+  });
+
   readonly avatarFile = signal<File | null>(null);
   readonly avatarPreview = signal<string | null>(null);
   readonly avatarError = signal('');
@@ -84,12 +89,25 @@ export class SeekerProfileFormComponent {
   readonly error = signal('');
 
   constructor() {
-    addIcons({ addOutline, closeCircle, personCircleOutline });
+    addIcons({ addOutline, chevronDown, closeCircle, personCircleOutline });
   }
 
-  onProvinceChange(provinceId: number | null): void {
-    this.pickProvince.set(provinceId);
+  async chooseProvince(): Promise<void> {
+    const current = this.pickProvince();
+    const result = await openGeoPicker(this.modals, { mode: 'province', selected: current ? [current] : [] });
+    if (!result || result[0] === current) return;
+    this.pickProvince.set(result[0]);
     this.pickDistricts.set([]);
+  }
+
+  async chooseDistricts(): Promise<void> {
+    const result = await openGeoPicker(this.modals, {
+      mode: 'district',
+      provinceId: this.pickProvince(),
+      multiple: true,
+      selected: this.pickDistricts(),
+    });
+    if (result) this.pickDistricts.set(result);
   }
 
   /** Adding a province again replaces what was chosen for it before. */

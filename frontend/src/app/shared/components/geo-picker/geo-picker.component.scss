@@ -1,0 +1,10 @@
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
+
+ion-item.current {
+  --color: var(--ion-color-primary);
+  font-weight: 600;
+}

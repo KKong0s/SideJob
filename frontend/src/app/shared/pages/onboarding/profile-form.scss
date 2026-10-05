@@ -43,3 +43,12 @@
   display: flex;
   flex-wrap: wrap;
 }
+
+// Read-only inputs that open the searchable geo picker
+.picker-field {
+  cursor: pointer;
+
+  ion-icon {
+    color: var(--ion-color-medium);
+  }
+}

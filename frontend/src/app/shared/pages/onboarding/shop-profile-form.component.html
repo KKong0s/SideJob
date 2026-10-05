@@ -16,32 +16,39 @@
     errorText="กรุณากรอกที่อยู่ร้าน"
   ></ion-textarea>
 
-  <ion-select
+  <ion-input
+    class="picker-field"
     label="จังหวัด *"
     labelPlacement="floating"
     fill="outline"
-    interface="modal"
-    cancelText="ยกเลิก"
-    formControlName="provinceId"
-    (ionChange)="onProvinceChange()"
+    [readonly]="true"
+    placeholder="แตะเพื่อค้นหาจังหวัด"
+    [value]="form.controls.provinceId.value ? geo.provinceName(form.controls.provinceId.value) : ''"
+    [class.ion-touched]="invalid('provinceId')"
+    [class.ion-invalid]="invalid('provinceId')"
+    errorText="กรุณาเลือกจังหวัด"
+    (click)="chooseProvince()"
+    (keydown.enter)="chooseProvince()"
   >
-    @for (p of geo.provinces(); track p.id) {
-      <ion-select-option [value]="p.id">{{ p.nameTh }}</ion-select-option>
-    }
-  </ion-select>
+    <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
+  </ion-input>
 
-  <ion-select
+  <ion-input
+    class="picker-field"
     [label]="geo.districtLabel(form.controls.provinceId.value) + ' *'"
     labelPlacement="floating"
     fill="outline"
-    interface="modal"
-    cancelText="ยกเลิก"
-    formControlName="districtId"
+    [readonly]="true"
+    [placeholder]="form.controls.provinceId.value ? 'แตะเพื่อค้นหา' : 'เลือกจังหวัดก่อน'"
+    [value]="form.controls.districtId.value ? geo.districtName(form.controls.districtId.value) : ''"
+    [class.ion-touched]="invalid('districtId')"
+    [class.ion-invalid]="invalid('districtId')"
+    [errorText]="'กรุณาเลือก' + geo.districtLabel(form.controls.provinceId.value)"
+    (click)="chooseDistrict()"
+    (keydown.enter)="chooseDistrict()"
   >
-    @for (d of geo.districtsOf(form.controls.provinceId.value); track d.id) {
-      <ion-select-option [value]="d.id">{{ d.nameTh }}</ion-select-option>
-    }
-  </ion-select>
+    <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
+  </ion-input>
 
   <ion-input
     type="tel"

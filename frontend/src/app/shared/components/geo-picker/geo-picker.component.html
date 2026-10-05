@@ -1,0 +1,56 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="cancel()">ยกเลิก</ion-button>
+    </ion-buttons>
+    <ion-title>{{ title }}</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar
+      [placeholder]="placeholder"
+      [debounce]="0"
+      enterkeyhint="search"
+      [value]="query()"
+      (ionInput)="query.set($event.detail.value ?? '')"
+      (keyup.enter)="pickFirst()"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-list lines="full">
+    @if (multiple && !query()) {
+      <ion-item>
+        <ion-checkbox justify="start" labelPlacement="end" [checked]="wholeProvince()" (ionChange)="toggle(0)">
+          <strong>ทั้งจังหวัด</strong>
+        </ion-checkbox>
+      </ion-item>
+    }
+
+    @for (item of results(); track item.id) {
+      @if (multiple) {
+        <ion-item>
+          <ion-checkbox justify="start" labelPlacement="end" [checked]="isPicked(item.id)" (ionChange)="toggle(item.id)">
+            {{ item.nameTh }}
+          </ion-checkbox>
+        </ion-item>
+      } @else {
+        <ion-item button [detail]="false" (click)="choose(item.id)" [class.current]="isPicked(item.id)">
+          <ion-label>{{ item.nameTh }}</ion-label>
+        </ion-item>
+      }
+    } @empty {
+      <div class="empty">ไม่พบ "{{ query() }}"</div>
+    }
+  </ion-list>
+</ion-content>
+
+@if (multiple) {
+  <ion-footer>
+    <ion-toolbar>
+      <ion-button expand="block" class="ion-margin-horizontal" (click)="confirm()">
+        @if (wholeProvince() || pickedCount() === 0) { เลือกทั้งจังหวัด } @else { เลือก {{ pickedCount() }} แห่ง }
+      </ion-button>
+    </ion-toolbar>
+  </ion-footer>
+}

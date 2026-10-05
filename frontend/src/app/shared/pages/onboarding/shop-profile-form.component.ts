@@ -1,7 +1,10 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { IonButton, IonInput, IonNote, IonSelect, IonSelectOption, IonSpinner, IonTextarea } from '@ionic/angular';
+import { IonButton, IonIcon, IonInput, IonNote, IonSpinner, IonTextarea, ModalController } from '@ionic/angular';
+import { addIcons } from 'ionicons';
+import { chevronDown } from 'ionicons/icons';
 
+import { openGeoPicker } from '../../components/geo-picker/geo-picker.component';
 import { SessionUser } from '../../models/session.model';
 import { AuthService } from '../../services/auth.service';
 import { GeoService } from '../../services/geo.service';
@@ -13,10 +16,11 @@ import { LINE_ID_PATTERN, normalisePhone, thaiPhone } from './profile-validators
   selector: 'app-shop-profile-form',
   templateUrl: 'shop-profile-form.component.html',
   styleUrls: ['profile-form.scss'],
-  imports: [ReactiveFormsModule, IonButton, IonInput, IonNote, IonSelect, IonSelectOption, IonSpinner, IonTextarea],
+  imports: [ReactiveFormsModule, IonButton, IonIcon, IonInput, IonNote, IonSpinner, IonTextarea],
 })
 export class ShopProfileFormComponent {
   private readonly auth = inject(AuthService);
+  private readonly modals = inject(ModalController);
   readonly geo = inject(GeoService);
 
   readonly saved = output<SessionUser>();
@@ -34,8 +38,39 @@ export class ShopProfileFormComponent {
   readonly busy = signal(false);
   readonly error = signal('');
 
-  onProvinceChange(): void {
+  constructor() {
+    addIcons({ chevronDown });
+  }
+
+  async chooseProvince(): Promise<void> {
+    const control = this.form.controls.provinceId;
+    const result = await openGeoPicker(this.modals, { mode: 'province', selected: control.value ? [control.value] : [] });
+    control.markAsTouched();
+    if (!result || result[0] === control.value) return;
+    control.setValue(result[0]);
     this.form.controls.districtId.reset(null);
+  }
+
+  async chooseDistrict(): Promise<void> {
+    const provinceId = this.form.controls.provinceId.value;
+    if (!provinceId) {
+      await this.chooseProvince();
+      return;
+    }
+    const control = this.form.controls.districtId;
+    const result = await openGeoPicker(this.modals, {
+      mode: 'district',
+      provinceId,
+      selected: control.value ? [control.value] : [],
+    });
+    control.markAsTouched();
+    if (result) control.setValue(result[0]);
+  }
+
+  /** Show the error state on the read-only picker fields like on normal inputs */
+  invalid(name: 'provinceId' | 'districtId'): boolean {
+    const c = this.form.controls[name];
+    return c.invalid && c.touched;
   }
 
   async submit(): Promise<void> {

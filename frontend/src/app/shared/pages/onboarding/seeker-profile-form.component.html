@@ -70,37 +70,33 @@
       </div>
     }
 
-    <ion-select
+    <ion-input
+      class="picker-field"
       label="จังหวัด"
       labelPlacement="floating"
       fill="outline"
-      interface="modal"
-      cancelText="ยกเลิก"
-      [value]="pickProvince()"
-      (ionChange)="onProvinceChange($event.detail.value)"
+      [readonly]="true"
+      placeholder="แตะเพื่อค้นหาจังหวัด"
+      [value]="pickProvinceLabel()"
+      (click)="chooseProvince()"
+      (keydown.enter)="chooseProvince()"
     >
-      @for (p of geo.provinces(); track p.id) {
-        <ion-select-option [value]="p.id">{{ p.nameTh }}</ion-select-option>
-      }
-    </ion-select>
+      <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
+    </ion-input>
 
     @if (pickProvince(); as provinceId) {
-      <ion-select
+      <ion-input
+        class="picker-field"
         [label]="geo.districtLabel(provinceId) + ' (เลือกได้หลายแห่ง)'"
         labelPlacement="floating"
         fill="outline"
-        interface="modal"
-        [multiple]="true"
-        cancelText="เสร็จ"
-        placeholder="ทั้งจังหวัด"
-        [value]="pickDistricts()"
-        (ionChange)="pickDistricts.set($event.detail.value ?? [])"
+        [readonly]="true"
+        [value]="pickDistrictsLabel()"
+        (click)="chooseDistricts()"
+        (keydown.enter)="chooseDistricts()"
       >
-        <ion-select-option [value]="WHOLE_PROVINCE">ทั้งจังหวัด</ion-select-option>
-        @for (d of geo.districtsOf(provinceId); track d.id) {
-          <ion-select-option [value]="d.id">{{ d.nameTh }}</ion-select-option>
-        }
-      </ion-select>
+        <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
+      </ion-input>
       <ion-button fill="outline" expand="block" (click)="addArea()">
         <ion-icon slot="start" name="add-outline"></ion-icon>
         เพิ่มพื้นที่นี้
