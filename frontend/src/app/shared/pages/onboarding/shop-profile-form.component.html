@@ -1,0 +1,84 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="profile-form">
+  <ion-input
+    label="ชื่อร้าน *"
+    labelPlacement="floating"
+    fill="outline"
+    formControlName="shopName"
+    errorText="กรุณากรอกชื่อร้าน"
+  ></ion-input>
+
+  <ion-textarea
+    label="ที่อยู่ร้าน *"
+    labelPlacement="floating"
+    fill="outline"
+    [autoGrow]="true"
+    formControlName="address"
+    errorText="กรุณากรอกที่อยู่ร้าน"
+  ></ion-textarea>
+
+  <ion-select
+    label="จังหวัด *"
+    labelPlacement="floating"
+    fill="outline"
+    interface="modal"
+    cancelText="ยกเลิก"
+    formControlName="provinceId"
+    (ionChange)="onProvinceChange()"
+  >
+    @for (p of geo.provinces(); track p.id) {
+      <ion-select-option [value]="p.id">{{ p.nameTh }}</ion-select-option>
+    }
+  </ion-select>
+
+  <ion-select
+    [label]="geo.districtLabel(form.controls.provinceId.value) + ' *'"
+    labelPlacement="floating"
+    fill="outline"
+    interface="modal"
+    cancelText="ยกเลิก"
+    formControlName="districtId"
+  >
+    @for (d of geo.districtsOf(form.controls.provinceId.value); track d.id) {
+      <ion-select-option [value]="d.id">{{ d.nameTh }}</ion-select-option>
+    }
+  </ion-select>
+
+  <ion-input
+    type="tel"
+    inputmode="tel"
+    label="เบอร์โทรร้าน *"
+    labelPlacement="floating"
+    fill="outline"
+    formControlName="phone"
+    errorText="เบอร์โทรไม่ถูกต้อง เช่น 021234567"
+  ></ion-input>
+
+  <ion-input
+    label="LINE ID ร้าน"
+    labelPlacement="floating"
+    fill="outline"
+    formControlName="lineId"
+    helperText="ผู้หางานจะเห็นเบอร์โทรและ LINE หลังร้านรับเข้าทำงานเท่านั้น"
+    errorText="LINE ID ไม่ถูกต้อง"
+  ></ion-input>
+
+  <ion-textarea
+    label="รายละเอียดร้าน"
+    labelPlacement="floating"
+    fill="outline"
+    [autoGrow]="true"
+    [counter]="true"
+    [maxlength]="2000"
+    formControlName="description"
+  ></ion-textarea>
+
+  <ion-note>รูปร้านและเอกสารยืนยันร้าน อัปโหลดได้ในหน้าโปรไฟล์ร้านหลังสมัครเสร็จ</ion-note>
+
+  @if (error()) {
+    <ion-note color="danger">{{ error() }}</ion-note>
+  }
+
+  <ion-button type="submit" expand="block" [disabled]="busy()">
+    @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { บันทึกและไปต่อ }
+  </ion-button>
+</form>

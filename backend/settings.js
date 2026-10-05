@@ -46,12 +46,13 @@ module.exports = {
   // Only the public uploads folder is served. uploads/private (shop verification docs) is never static.
   httpStatic: [{ path: '/data/uploads/public', root: '/uploads/' }],
 
-  // Libraries for function nodes: global.get('bcrypt'), global.get('jwt'), global.get('googleAuth')
+  // Libraries for function nodes: global.get('bcrypt'), global.get('jwt'), global.get('googleAuth'), global.get('crypto')
   functionExternalModules: false,
   functionGlobalContext: {
     bcrypt: require('bcryptjs'),
     jwt: require('jsonwebtoken'),
     googleAuth: require('google-auth-library'),
+    crypto: require('crypto'),
   },
   exportGlobalContextKeys: false,
 

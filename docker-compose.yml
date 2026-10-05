@@ -58,5 +58,18 @@ services:
     volumes:
       - ./backend:/data
 
+  # Dev-only database browser. Never expose this on a real server.
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: sidejob-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+
 volumes:
   mysql-data:

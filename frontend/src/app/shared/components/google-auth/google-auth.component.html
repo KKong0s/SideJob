@@ -1,0 +1,36 @@
+@if (enabled) {
+  <div class="divider"><span>หรือ</span></div>
+
+  <div #buttonHost class="google-button" [hidden]="!!link()"></div>
+
+  @if (link(); as l) {
+    <div class="link-box">
+      <ion-text>
+        <p>
+          อีเมล <strong>{{ l.email }}</strong> มีบัญชี SideJob อยู่แล้ว
+          ใส่รหัสผ่านเดิมเพื่อเชื่อมกับ Google ครั้งต่อไปจะเข้าด้วย Google ได้เลย
+        </p>
+      </ion-text>
+      <ion-input
+        type="password"
+        label="รหัสผ่านเดิม"
+        labelPlacement="floating"
+        fill="outline"
+        [(ngModel)]="linkPassword"
+        (keyup.enter)="confirmLink()"
+      >
+        <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+      </ion-input>
+      <ion-button expand="block" [disabled]="busy() || !linkPassword" (click)="confirmLink()">
+        @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { เชื่อมบัญชีและเข้าสู่ระบบ }
+      </ion-button>
+      <ion-button expand="block" fill="clear" (click)="cancelLink()">ยกเลิก</ion-button>
+    </div>
+  } @else if (busy()) {
+    <div class="ion-text-center"><ion-spinner name="dots"></ion-spinner></div>
+  }
+
+  @if (error()) {
+    <ion-note color="danger" class="error">{{ error() }}</ion-note>
+  }
+}

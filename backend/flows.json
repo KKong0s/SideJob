@@ -1,136 +1,2161 @@
 [
-  { "id": "tab_auth", "type": "tab", "label": "Auth", "disabled": false, "info": "/api/auth/... : register, login, Google Sign-In, onboarding" },
-  { "id": "tab_seeker", "type": "tab", "label": "Seeker", "disabled": false, "info": "/api/seeker/... : seeker profile, applications, saved jobs" },
-  { "id": "tab_shop", "type": "tab", "label": "Shop", "disabled": false, "info": "/api/shop/... : shop profile, verification upload, jobs, applicants" },
-  { "id": "tab_admin", "type": "tab", "label": "Admin", "disabled": false, "info": "/api/admin/... : shop verification, users, jobs, reports, categories, audit log" },
-  { "id": "tab_jobs", "type": "tab", "label": "Jobs (public)", "disabled": false, "info": "/api/jobs/... : search and job detail" },
-  { "id": "tab_geo", "type": "tab", "label": "Geo", "disabled": false, "info": "/api/geo/... : regions, provinces, districts" },
-  { "id": "tab_notifications", "type": "tab", "label": "Notifications", "disabled": false, "info": "In-app notifications" },
-  { "id": "tab_scheduled", "type": "tab", "label": "Scheduled", "disabled": false, "info": "Timed jobs, e.g. closing expired job posts at midnight" },
-  { "id": "tab_system", "type": "tab", "label": "System", "disabled": false, "info": "Health check and shared infrastructure" },
-
-  {
-    "id": "cfg_mysql_sidejob",
-    "type": "MySQLdatabase",
-    "name": "SideJob MySQL",
-    "host": "${DB_HOST}",
-    "port": "${DB_PORT}",
-    "db": "${DB_NAME}",
-    "tz": "+07:00",
-    "charset": "UTF8MB4"
-  },
-
-  { "id": "cmt_auth", "type": "comment", "z": "tab_auth", "name": "Phase 1: /api/auth/*", "info": "", "x": 140, "y": 40, "wires": [] },
-  { "id": "cmt_seeker", "type": "comment", "z": "tab_seeker", "name": "/api/seeker/* (role: seeker)", "info": "", "x": 150, "y": 40, "wires": [] },
-  { "id": "cmt_shop", "type": "comment", "z": "tab_shop", "name": "/api/shop/* (role: shop)", "info": "", "x": 140, "y": 40, "wires": [] },
-  { "id": "cmt_admin", "type": "comment", "z": "tab_admin", "name": "/api/admin/* (role: admin)", "info": "", "x": 140, "y": 40, "wires": [] },
-  { "id": "cmt_jobs", "type": "comment", "z": "tab_jobs", "name": "/api/jobs/* (public)", "info": "", "x": 130, "y": 40, "wires": [] },
-  { "id": "cmt_geo", "type": "comment", "z": "tab_geo", "name": "/api/geo/* (public)", "info": "", "x": 130, "y": 40, "wires": [] },
-  { "id": "cmt_notifications", "type": "comment", "z": "tab_notifications", "name": "Notification API and helpers", "info": "", "x": 150, "y": 40, "wires": [] },
-  { "id": "cmt_scheduled", "type": "comment", "z": "tab_scheduled", "name": "Daily midnight jobs (Asia/Bangkok)", "info": "", "x": 170, "y": 40, "wires": [] },
-
-  {
-    "id": "in_health",
-    "type": "http in",
-    "z": "tab_system",
-    "name": "GET /api/health",
-    "url": "/api/health",
-    "method": "get",
-    "upload": false,
-    "swaggerDoc": "",
-    "x": 140,
-    "y": 80,
-    "wires": [["fn_health_query"]]
-  },
-  {
-    "id": "fn_health_query",
-    "type": "function",
-    "z": "tab_system",
-    "name": "Build health query",
-    "func": "msg.topic = \"SELECT DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s') AS server_time, (SELECT COUNT(*) FROM provinces) AS provinces\";\nmsg.payload = [];\nreturn msg;",
-    "outputs": 1,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 360,
-    "y": 80,
-    "wires": [["db_health"]]
-  },
-  {
-    "id": "db_health",
-    "type": "mysql",
-    "z": "tab_system",
-    "mydb": "cfg_mysql_sidejob",
-    "name": "Query database",
-    "x": 560,
-    "y": 80,
-    "wires": [["fn_health_response"]]
-  },
-  {
-    "id": "fn_health_response",
-    "type": "function",
-    "z": "tab_system",
-    "name": "Format health response",
-    "func": "const row = msg.payload[0];\nmsg.statusCode = 200;\nmsg.payload = {\n    status: 'ok',\n    database: 'connected',\n    provinces: row.provinces,\n    time: row.server_time\n};\nreturn msg;",
-    "outputs": 1,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 780,
-    "y": 80,
-    "wires": [["out_health"]]
-  },
-  {
-    "id": "out_health",
-    "type": "http response",
-    "z": "tab_system",
-    "name": "Send response",
-    "statusCode": "",
-    "headers": {},
-    "x": 990,
-    "y": 80,
-    "wires": []
-  },
-  {
-    "id": "catch_system",
-    "type": "catch",
-    "z": "tab_system",
-    "name": "Catch System errors",
-    "scope": null,
-    "uncaught": false,
-    "x": 150,
-    "y": 160,
-    "wires": [["fn_system_error"]]
-  },
-  {
-    "id": "fn_system_error",
-    "type": "function",
-    "z": "tab_system",
-    "name": "Format error response",
-    "func": "// Standard error body used across the whole API: { error: { code, message } }\nconst status = Number(msg.statusCode) >= 400 ? Number(msg.statusCode) : 500;\nnode.warn(`${msg.req ? msg.req.method + ' ' + msg.req.originalUrl : ''} -> ${status}: ${msg.error && msg.error.message}`);\nmsg.statusCode = status;\nmsg.payload = {\n    error: {\n        code: status === 500 ? 'INTERNAL_ERROR' : (msg.errorCode || 'ERROR'),\n        message: status === 500 ? 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่' : (msg.errorMessage || 'เกิดข้อผิดพลาด')\n    }\n};\nreturn msg.res ? msg : null;",
-    "outputs": 1,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 380,
-    "y": 160,
-    "wires": [["out_system_error"]]
-  },
-  {
-    "id": "out_system_error",
-    "type": "http response",
-    "z": "tab_system",
-    "name": "Send error response",
-    "statusCode": "",
-    "headers": {},
-    "x": 610,
-    "y": 160,
-    "wires": []
-  }
+    {
+        "id": "tab_auth",
+        "type": "tab",
+        "label": "Auth",
+        "disabled": false,
+        "info": "/api/auth/... : register, login, Google Sign-In, onboarding"
+    },
+    {
+        "id": "tab_seeker",
+        "type": "tab",
+        "label": "Seeker",
+        "disabled": false,
+        "info": "/api/seeker/... : seeker profile, applications, saved jobs"
+    },
+    {
+        "id": "tab_shop",
+        "type": "tab",
+        "label": "Shop",
+        "disabled": false,
+        "info": "/api/shop/... : shop profile, verification upload, jobs, applicants"
+    },
+    {
+        "id": "tab_admin",
+        "type": "tab",
+        "label": "Admin",
+        "disabled": false,
+        "info": "/api/admin/... : shop verification, users, jobs, reports, categories, audit log"
+    },
+    {
+        "id": "tab_jobs",
+        "type": "tab",
+        "label": "Jobs (public)",
+        "disabled": false,
+        "info": "/api/jobs/... : search and job detail"
+    },
+    {
+        "id": "tab_geo",
+        "type": "tab",
+        "label": "Geo",
+        "disabled": false,
+        "info": "/api/geo/... : regions, provinces, districts"
+    },
+    {
+        "id": "tab_notifications",
+        "type": "tab",
+        "label": "Notifications",
+        "disabled": false,
+        "info": "In-app notifications"
+    },
+    {
+        "id": "tab_scheduled",
+        "type": "tab",
+        "label": "Scheduled",
+        "disabled": false,
+        "info": "Timed jobs, e.g. closing expired job posts at midnight"
+    },
+    {
+        "id": "tab_system",
+        "type": "tab",
+        "label": "System",
+        "disabled": false,
+        "info": "Health check and shared infrastructure"
+    },
+    {
+        "id": "cfg_mysql_sidejob",
+        "type": "MySQLdatabase",
+        "name": "SideJob MySQL",
+        "host": "${DB_HOST}",
+        "port": "${DB_PORT}",
+        "db": "${DB_NAME}",
+        "tz": "+07:00",
+        "charset": "UTF8MB4"
+    },
+    {
+        "id": "sf_error_response",
+        "type": "subflow",
+        "name": "error-response",
+        "info": "Formats any error as `{ error: { code, message, details? } }` and sends it.\n\nSet `msg.statusCode` (4xx), `msg.errorCode`, `msg.errorMessage` and optionally `msg.errorDetails` before calling `node.error(...)`. Anything else becomes 500 INTERNAL_ERROR (details only in the log).",
+        "category": "",
+        "color": "#E2D96E",
+        "icon": "node-red/alert.svg",
+        "in": [
+            {
+                "x": 60,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "sf_er_format"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": []
+    },
+    {
+        "id": "sf_er_format",
+        "type": "function",
+        "name": "Format error response",
+        "func": "const raw = (msg.error && msg.error.message) || '';\nlet status = Number(msg.statusCode);\nlet code = msg.errorCode;\nlet message = msg.errorMessage;\n\nif (!(status >= 400 && status < 600)) {\n    if (/ER_DUP_ENTRY|Duplicate entry/.test(raw)) {\n        status = 409;\n        code = 'CONFLICT';\n        message = 'ข้อมูลนี้มีอยู่แล้ว';\n    } else {\n        status = 500;\n    }\n}\nif (status >= 500 && !code) {\n    const source = msg.error && msg.error.source ? `${msg.error.source.type}:${msg.error.source.name || msg.error.source.id}` : '';\n    node.warn(`${msg.req ? msg.req.method + ' ' + msg.req.originalUrl : ''} -> ${status} [${source}] ${raw}`);\n    code = 'INTERNAL_ERROR';\n    message = 'เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่';\n}\n\n// Nothing to answer (e.g. background job or response already sent)\nif (!msg.res) return null;\n\nmsg.statusCode = status;\nmsg.headers = { 'Content-Type': 'application/json; charset=utf-8' };\nmsg.payload = { error: { code: code || 'ERROR', message: message || 'เกิดข้อผิดพลาด' } };\nif (msg.errorDetails) msg.payload.error.details = msg.errorDetails;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "sf_error_response",
+        "x": 150,
+        "y": 80,
+        "wires": [
+            [
+                "sf_er_out"
+            ]
+        ]
+    },
+    {
+        "id": "sf_er_out",
+        "type": "http response",
+        "name": "Send error response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "sf_error_response",
+        "x": 360,
+        "y": 80
+    },
+    {
+        "id": "sf_auth_check",
+        "type": "subflow",
+        "name": "auth-check",
+        "info": "Verifies the `Authorization: Bearer <JWT>` header, loads the user from the database (so role / suspension are always current) and puts it in `msg.user = { id, email, role, profileCompleted }`.\n\n- **ROLES**: comma-separated roles allowed (empty = any logged-in user)\n- **REQUIRE_PROFILE**: reject users who have not finished onboarding\n\nRejections are raised as 401/403 errors and handled by the tab's catch node. After this node `msg.payload` is the request body again.",
+        "category": "",
+        "color": "#87A980",
+        "icon": "font-awesome/fa-lock",
+        "in": [
+            {
+                "x": 60,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "sf_ac_verify"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 760,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "sf_ac_check",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [
+            {
+                "name": "ROLES",
+                "type": "str",
+                "value": "",
+                "ui": {
+                    "label": {
+                        "en": "Allowed roles (comma-separated, empty = any)"
+                    },
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "str"
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "type": "bool",
+                "value": "false",
+                "ui": {
+                    "label": {
+                        "en": "Require completed onboarding"
+                    },
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "bool"
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "sf_ac_verify",
+        "type": "function",
+        "name": "Verify JWT",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst jwt = global.get('jwt');\nconst header = (msg.req && msg.req.headers.authorization) || '';\nconst match = /^Bearer\\s+(\\S+)$/i.exec(header);\nif (!match) return fail(401, 'UNAUTHORIZED', 'กรุณาเข้าสู่ระบบ');\n\nlet claims;\ntry {\n    claims = jwt.verify(match[1], env.get('JWT_SECRET'), { algorithms: ['HS256'] });\n} catch (e) {\n    return fail(401, 'UNAUTHORIZED', 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');\n}\nif (claims.typ !== 'access' || !/^\\d+$/.test(String(claims.sub))) {\n    return fail(401, 'UNAUTHORIZED', 'โทเคนไม่ถูกต้อง');\n}\n\nmsg.topic = 'SELECT id, email, role, status, profile_completed FROM users WHERE id = ?';\nmsg.payload = [Number(claims.sub)];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "sf_auth_check",
+        "x": 150,
+        "y": 80,
+        "wires": [
+            [
+                "sf_ac_load"
+            ]
+        ]
+    },
+    {
+        "id": "sf_ac_load",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Load user",
+        "z": "sf_auth_check",
+        "x": 360,
+        "y": 80,
+        "wires": [
+            [
+                "sf_ac_check"
+            ]
+        ]
+    },
+    {
+        "id": "sf_ac_check",
+        "type": "function",
+        "name": "Check account status and role",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst row = msg.payload[0];\nif (!row) return fail(401, 'UNAUTHORIZED', 'ไม่พบบัญชีผู้ใช้ กรุณาเข้าสู่ระบบใหม่');\nif (row.status !== 'active') return fail(403, 'ACCOUNT_SUSPENDED', 'บัญชีนี้ถูกระงับการใช้งาน');\n\nconst allowed = String(env.get('ROLES') || '').split(',').map((s) => s.trim()).filter(Boolean);\nif (allowed.length && !allowed.includes(row.role)) {\n    return fail(403, 'FORBIDDEN', 'คุณไม่มีสิทธิ์ใช้งานส่วนนี้');\n}\nif (String(env.get('REQUIRE_PROFILE')) === 'true' && row.role !== 'admin' && !row.profile_completed) {\n    return fail(403, 'PROFILE_INCOMPLETE', 'กรุณากรอกข้อมูลโปรไฟล์ให้ครบก่อน');\n}\n\nmsg.user = { id: row.id, email: row.email, role: row.role, profileCompleted: !!row.profile_completed };\nmsg.payload = msg.req.body;\ndelete msg.topic;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "sf_auth_check",
+        "x": 570,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sf_session_user",
+        "type": "subflow",
+        "name": "session-user",
+        "info": "Loads the user in `msg.sessionUserId` and builds `msg.sessionUser` (safe to send to the frontend: no password hash).\n\nWith **ISSUE_TOKEN** also signs a new access JWT into `msg.sessionToken`.\n\n`onboardingStep`: `role` → `profile` → `terms` → `done`.",
+        "category": "",
+        "color": "#87A980",
+        "icon": "font-awesome/fa-user",
+        "in": [
+            {
+                "x": 60,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "sf_su_query"
+                    }
+                ]
+            }
+        ],
+        "out": [
+            {
+                "x": 760,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "sf_su_format",
+                        "port": 0
+                    }
+                ]
+            }
+        ],
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "type": "bool",
+                "value": "false",
+                "ui": {
+                    "label": {
+                        "en": "Issue a new JWT"
+                    },
+                    "type": "input",
+                    "opts": {
+                        "types": [
+                            "bool"
+                        ]
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "sf_su_query",
+        "type": "function",
+        "name": "Build session user query",
+        "func": "msg.topic = `SELECT u.id, u.email, u.role, u.status, u.profile_completed, u.pdpa_accepted_at,\n       u.password_hash IS NOT NULL AS has_password, u.google_id IS NOT NULL AS has_google,\n       sp.user_id IS NOT NULL AS has_seeker_profile, sp.full_name, sp.avatar_file,\n       s.id AS shop_id, s.name AS shop_name, s.verify_status\nFROM users u\nLEFT JOIN seeker_profiles sp ON sp.user_id = u.id\nLEFT JOIN shops s ON s.owner_user_id = u.id\nWHERE u.id = ?`;\nmsg.payload = [msg.sessionUserId];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "sf_session_user",
+        "x": 150,
+        "y": 80,
+        "wires": [
+            [
+                "sf_su_load"
+            ]
+        ]
+    },
+    {
+        "id": "sf_su_load",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Load session user",
+        "z": "sf_session_user",
+        "x": 360,
+        "y": 80,
+        "wires": [
+            [
+                "sf_su_format"
+            ]
+        ]
+    },
+    {
+        "id": "sf_su_format",
+        "type": "function",
+        "name": "Format session user (+ sign JWT)",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst r = msg.payload[0];\nif (!r) return fail(401, 'UNAUTHORIZED', 'ไม่พบบัญชีผู้ใช้');\n\nlet step = 'done';\nif (r.role !== 'admin') {\n    if (!r.role) step = 'role';\n    else if ((r.role === 'seeker' && !r.has_seeker_profile) || (r.role === 'shop' && !r.shop_id)) step = 'profile';\n    else if (!r.pdpa_accepted_at || !r.profile_completed) step = 'terms';\n}\n\nmsg.sessionUser = {\n    id: r.id,\n    email: r.email,\n    role: r.role,\n    status: r.status,\n    hasPassword: !!r.has_password,\n    hasGoogle: !!r.has_google,\n    profileCompleted: step === 'done',\n    onboardingStep: step,\n    displayName: r.full_name || r.shop_name || null,\n    avatarPath: r.avatar_file ? 'avatars/' + r.avatar_file : null,\n    shop: r.shop_id ? { id: r.shop_id, name: r.shop_name, verifyStatus: r.verify_status } : null,\n};\n\nif (String(env.get('ISSUE_TOKEN')) === 'true') {\n    const jwt = global.get('jwt');\n    msg.sessionToken = jwt.sign({ typ: 'access' }, env.get('JWT_SECRET'), {\n        subject: String(r.id),\n        expiresIn: env.get('JWT_EXPIRES_IN') || '7d',\n        algorithm: 'HS256',\n    });\n}\ndelete msg.topic;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "sf_session_user",
+        "x": 570,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cmt_auth_public",
+        "type": "comment",
+        "z": "tab_auth",
+        "name": "Public: register / login / Google",
+        "info": "",
+        "x": 170,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "auth_catch",
+        "type": "catch",
+        "z": "tab_auth",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "auth_err"
+            ]
+        ]
+    },
+    {
+        "id": "auth_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_auth",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "auth_register_in",
+        "type": "http in",
+        "name": "POST /api/auth/register",
+        "url": "/api/auth/register",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_validate"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_validate",
+        "type": "function",
+        "name": "Validate register input",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst b = msg.req.body || {};\nconst email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';\nconst password = typeof b.password === 'string' ? b.password : '';\n\nif (email.length > 255 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {\n    return fail(400, 'VALIDATION_ERROR', 'รูปแบบอีเมลไม่ถูกต้อง');\n}\nif (password.length < 8 || Buffer.byteLength(password) > 72 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) {\n    return fail(400, 'VALIDATION_ERROR', 'รหัสผ่านต้องยาว 8 ตัวขึ้นไป และมีทั้งตัวอักษรและตัวเลข');\n}\n\nmsg.ctx = { email, password };\nmsg.topic = 'SELECT id FROM users WHERE email = ?';\nmsg.payload = [email];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_find"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_find",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Find user by email",
+        "z": "tab_auth",
+        "x": 570,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_hash"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_hash",
+        "type": "function",
+        "name": "Reject duplicate, hash password",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nif (msg.payload.length) return fail(409, 'EMAIL_TAKEN', 'อีเมลนี้ถูกใช้สมัครแล้ว');\n\nconst bcrypt = global.get('bcrypt');\nbcrypt.hash(msg.ctx.password, 10).then((hash) => {\n    msg.topic = 'INSERT INTO users (email, password_hash, last_login_at) VALUES (?, ?, NOW())';\n    msg.payload = [msg.ctx.email, hash];\n    delete msg.ctx.password;\n    node.send(msg);\n}).catch((err) => node.error(err, msg));\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 780,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_insert"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_insert",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Insert user",
+        "z": "tab_auth",
+        "x": 990,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_created"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_created",
+        "type": "function",
+        "name": "Use new user id",
+        "func": "msg.sessionUserId = msg.payload.insertId;\nmsg.statusCode = 201;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user (+token)",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 1410,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_respond",
+        "type": "function",
+        "name": "Format token response",
+        "func": "msg.statusCode = msg.statusCode || 200;\nmsg.payload = { token: msg.sessionToken, user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1620,
+        "y": 100,
+        "wires": [
+            [
+                "auth_register_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_register_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1830,
+        "y": 100
+    },
+    {
+        "id": "auth_login_in",
+        "type": "http in",
+        "name": "POST /api/auth/login",
+        "url": "/api/auth/login",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "auth_login_validate"
+            ]
+        ]
+    },
+    {
+        "id": "auth_login_validate",
+        "type": "function",
+        "name": "Validate login input",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst b = msg.req.body || {};\nconst email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';\nconst password = typeof b.password === 'string' ? b.password : '';\nif (!email || !password) return fail(400, 'VALIDATION_ERROR', 'กรุณากรอกอีเมลและรหัสผ่าน');\n\nmsg.ctx = { password };\nmsg.topic = 'SELECT id, password_hash, status FROM users WHERE email = ?';\nmsg.payload = [email];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 160,
+        "wires": [
+            [
+                "auth_login_find"
+            ]
+        ]
+    },
+    {
+        "id": "auth_login_find",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Find user by email",
+        "z": "tab_auth",
+        "x": 570,
+        "y": 160,
+        "wires": [
+            [
+                "auth_login_check"
+            ]
+        ]
+    },
+    {
+        "id": "auth_login_check",
+        "type": "function",
+        "name": "Check password and status",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Compare against a dummy hash when the user is missing so timing does not reveal accounts\nconst DUMMY_HASH = '$2a$10$hi7qVmnwH2TwfvT2fMvWReaWpE5Yk2BZzZOzs7AskkqB4G/E5zfr.';\nconst bcrypt = global.get('bcrypt');\nconst row = msg.payload[0];\nconst password = msg.ctx.password;\ndelete msg.ctx.password;\n\nbcrypt.compare(password, (row && row.password_hash) || DUMMY_HASH).then((ok) => {\n    if (!row || !row.password_hash || !ok) {\n        return fail(401, 'INVALID_CREDENTIALS', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');\n    }\n    if (row.status !== 'active') return fail(403, 'ACCOUNT_SUSPENDED', 'บัญชีนี้ถูกระงับการใช้งาน');\n\n    msg.sessionUserId = row.id;\n    msg.topic = 'UPDATE users SET last_login_at = NOW() WHERE id = ?';\n    msg.payload = [row.id];\n    node.send(msg);\n}).catch((err) => node.error(err, msg));\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 780,
+        "y": 160,
+        "wires": [
+            [
+                "auth_login_touch"
+            ]
+        ]
+    },
+    {
+        "id": "auth_login_touch",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Update last login",
+        "z": "tab_auth",
+        "x": 990,
+        "y": 160,
+        "wires": [
+            [
+                "auth_login_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_login_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user (+token)",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 160,
+        "wires": [
+            [
+                "auth_login_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_login_respond",
+        "type": "function",
+        "name": "Format token response",
+        "func": "msg.statusCode = msg.statusCode || 200;\nmsg.payload = { token: msg.sessionToken, user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1410,
+        "y": 160,
+        "wires": [
+            [
+                "auth_login_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_login_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1620,
+        "y": 160
+    },
+    {
+        "id": "auth_google_in",
+        "type": "http in",
+        "name": "POST /api/auth/google",
+        "url": "/api/auth/google",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_verify"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_verify",
+        "type": "function",
+        "name": "Verify Google ID token",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst clientId = env.get('GOOGLE_CLIENT_ID');\nif (!clientId) return fail(503, 'GOOGLE_NOT_CONFIGURED', 'ระบบยังไม่เปิดให้เข้าสู่ระบบด้วย Google');\n\nconst idToken = msg.req.body && msg.req.body.idToken;\nif (typeof idToken !== 'string' || !idToken) return fail(400, 'VALIDATION_ERROR', 'ไม่พบข้อมูลจาก Google');\n\nlet client = context.get('googleClient');\nif (!client) {\n    const { OAuth2Client } = global.get('googleAuth');\n    client = new OAuth2Client();\n    context.set('googleClient', client);\n}\n\n// Only data from the verified token is trusted, never anything else the frontend sends\nclient.verifyIdToken({ idToken, audience: clientId }).then((ticket) => {\n    const p = ticket.getPayload();\n    if (!p || !p.sub || !p.email || p.email_verified !== true) {\n        return fail(401, 'GOOGLE_TOKEN_INVALID', 'ไม่สามารถยืนยันบัญชี Google ได้');\n    }\n    msg.ctx = { googleId: p.sub, email: p.email.toLowerCase() };\n    msg.topic = 'SELECT id, email, google_id, role, status FROM users WHERE google_id = ? OR email = ?';\n    msg.payload = [p.sub, msg.ctx.email];\n    node.send(msg);\n}).catch(() => fail(401, 'GOOGLE_TOKEN_INVALID', 'ไม่สามารถยืนยันบัญชี Google ได้'));\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_find"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_find",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Find user by Google ID or email",
+        "z": "tab_auth",
+        "x": 570,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_resolve"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_resolve",
+        "type": "function",
+        "name": "Resolve account (login / link / create)",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst { googleId, email } = msg.ctx;\nconst byGoogle = msg.payload.find((r) => r.google_id === googleId);\nconst byEmail = msg.payload.find((r) => r.email.toLowerCase() === email);\nconst user = byGoogle || byEmail;\n\nif (!user) {\n    msg.statusCode = 201;\n    msg.topic = 'INSERT INTO users (email, google_id, last_login_at) VALUES (?, ?, NOW())';\n    msg.payload = [email, googleId];\n    return msg;\n}\n\nif (user.role === 'admin') {\n    return fail(403, 'ADMIN_PASSWORD_ONLY', 'บัญชีแอดมินต้องเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน');\n}\nif (user.status !== 'active') return fail(403, 'ACCOUNT_SUSPENDED', 'บัญชีนี้ถูกระงับการใช้งาน');\n\nif (!byGoogle) {\n    if (user.google_id) {\n        return fail(409, 'GOOGLE_ACCOUNT_CONFLICT', 'อีเมลนี้เชื่อมกับบัญชี Google อื่นอยู่แล้ว');\n    }\n    // Existing email/password account: the user must confirm with the old password\n    const jwt = global.get('jwt');\n    const linkToken = jwt.sign({ typ: 'google-link', gid: googleId }, env.get('JWT_SECRET'), {\n        subject: String(user.id),\n        expiresIn: '10m',\n        algorithm: 'HS256',\n    });\n    return fail(409, 'GOOGLE_LINK_REQUIRED', 'อีเมลนี้มีบัญชีอยู่แล้ว กรุณาใส่รหัสผ่านเดิมเพื่อเชื่อมกับ Google', {\n        linkToken,\n        email: user.email,\n    });\n}\n\nmsg.sessionUserId = user.id;\nmsg.topic = 'UPDATE users SET last_login_at = NOW() WHERE id = ?';\nmsg.payload = [user.id];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 780,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_save"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_save",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Create user / update last login",
+        "z": "tab_auth",
+        "x": 990,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_user_id"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_user_id",
+        "type": "function",
+        "name": "Use user id",
+        "func": "msg.sessionUserId = msg.sessionUserId || msg.payload.insertId;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user (+token)",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 1410,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_respond",
+        "type": "function",
+        "name": "Format token response",
+        "func": "msg.statusCode = msg.statusCode || 200;\nmsg.payload = { token: msg.sessionToken, user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1620,
+        "y": 220,
+        "wires": [
+            [
+                "auth_google_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_google_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1830,
+        "y": 220
+    },
+    {
+        "id": "auth_link_in",
+        "type": "http in",
+        "name": "POST /api/auth/google/link",
+        "url": "/api/auth/google/link",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 280,
+        "wires": [
+            [
+                "auth_link_verify"
+            ]
+        ]
+    },
+    {
+        "id": "auth_link_verify",
+        "type": "function",
+        "name": "Verify link token",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst jwt = global.get('jwt');\nconst b = msg.req.body || {};\nlet claims;\ntry {\n    claims = jwt.verify(String(b.linkToken || ''), env.get('JWT_SECRET'), { algorithms: ['HS256'] });\n} catch (e) {\n    claims = null;\n}\nif (!claims || claims.typ !== 'google-link' || !claims.gid) {\n    return fail(401, 'LINK_TOKEN_INVALID', 'หมดเวลาเชื่อมบัญชี กรุณาเข้าสู่ระบบด้วย Google อีกครั้ง');\n}\nif (typeof b.password !== 'string' || !b.password) return fail(400, 'VALIDATION_ERROR', 'กรุณากรอกรหัสผ่าน');\n\nmsg.ctx = { userId: Number(claims.sub), googleId: claims.gid, password: b.password };\nmsg.topic = 'SELECT id, password_hash, google_id, role, status FROM users WHERE id = ?';\nmsg.payload = [msg.ctx.userId];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 280,
+        "wires": [
+            [
+                "auth_link_find"
+            ]
+        ]
+    },
+    {
+        "id": "auth_link_find",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Load user to link",
+        "z": "tab_auth",
+        "x": 570,
+        "y": 280,
+        "wires": [
+            [
+                "auth_link_check"
+            ]
+        ]
+    },
+    {
+        "id": "auth_link_check",
+        "type": "function",
+        "name": "Check password, link Google ID",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst bcrypt = global.get('bcrypt');\nconst row = msg.payload[0];\nconst password = msg.ctx.password;\ndelete msg.ctx.password;\nif (!row || !row.password_hash) return fail(401, 'LINK_TOKEN_INVALID', 'ไม่พบบัญชีที่ต้องการเชื่อม');\n\nbcrypt.compare(password, row.password_hash).then((ok) => {\n    if (!ok) return fail(401, 'INVALID_CREDENTIALS', 'รหัสผ่านไม่ถูกต้อง');\n    if (row.role === 'admin') return fail(403, 'ADMIN_PASSWORD_ONLY', 'บัญชีแอดมินต้องเข้าสู่ระบบด้วยอีเมลและรหัสผ่าน');\n    if (row.status !== 'active') return fail(403, 'ACCOUNT_SUSPENDED', 'บัญชีนี้ถูกระงับการใช้งาน');\n    if (row.google_id) return fail(409, 'GOOGLE_ACCOUNT_CONFLICT', 'บัญชีนี้เชื่อมกับ Google แล้ว');\n\n    msg.sessionUserId = row.id;\n    msg.topic = 'UPDATE users SET google_id = ?, last_login_at = NOW() WHERE id = ? AND google_id IS NULL';\n    msg.payload = [msg.ctx.googleId, row.id];\n    node.send(msg);\n}).catch((err) => node.error(err, msg));\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 780,
+        "y": 280,
+        "wires": [
+            [
+                "auth_link_save"
+            ]
+        ]
+    },
+    {
+        "id": "auth_link_save",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Save Google ID",
+        "z": "tab_auth",
+        "x": 990,
+        "y": 280,
+        "wires": [
+            [
+                "auth_link_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_link_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user (+token)",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 280,
+        "wires": [
+            [
+                "auth_link_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_link_respond",
+        "type": "function",
+        "name": "Format token response",
+        "func": "msg.statusCode = msg.statusCode || 200;\nmsg.payload = { token: msg.sessionToken, user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1410,
+        "y": 280,
+        "wires": [
+            [
+                "auth_link_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_link_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1620,
+        "y": 280
+    },
+    {
+        "id": "cmt_auth_session",
+        "type": "comment",
+        "z": "tab_auth",
+        "name": "Logged in: current user + onboarding (role → profile → terms)",
+        "info": "",
+        "x": 260,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "auth_me_in",
+        "type": "http in",
+        "name": "GET /api/auth/me",
+        "url": "/api/auth/me",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 420,
+        "wires": [
+            [
+                "auth_me_auth"
+            ]
+        ]
+    },
+    {
+        "id": "auth_me_auth",
+        "type": "subflow:sf_auth_check",
+        "name": "auth-check (any role)",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 420,
+        "wires": [
+            [
+                "auth_me_user"
+            ]
+        ]
+    },
+    {
+        "id": "auth_me_user",
+        "type": "function",
+        "name": "Use current user",
+        "func": "msg.sessionUserId = msg.user.id;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 570,
+        "y": 420,
+        "wires": [
+            [
+                "auth_me_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_me_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 780,
+        "y": 420,
+        "wires": [
+            [
+                "auth_me_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_me_respond",
+        "type": "function",
+        "name": "Format user response",
+        "func": "msg.statusCode = 200;\nmsg.payload = { user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 990,
+        "y": 420,
+        "wires": [
+            [
+                "auth_me_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_me_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 420
+    },
+    {
+        "id": "auth_role_in",
+        "type": "http in",
+        "name": "POST /api/auth/onboarding/role",
+        "url": "/api/auth/onboarding/role",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 480,
+        "wires": [
+            [
+                "auth_role_auth"
+            ]
+        ]
+    },
+    {
+        "id": "auth_role_auth",
+        "type": "subflow:sf_auth_check",
+        "name": "auth-check (any role)",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 480,
+        "wires": [
+            [
+                "auth_role_validate"
+            ]
+        ]
+    },
+    {
+        "id": "auth_role_validate",
+        "type": "function",
+        "name": "Validate role choice",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst role = msg.payload && msg.payload.role;\nif (role !== 'seeker' && role !== 'shop') return fail(400, 'VALIDATION_ERROR', 'กรุณาเลือกบทบาท');\nif (msg.user.role) return fail(409, 'ROLE_ALREADY_SET', 'เลือกบทบาทไปแล้ว เปลี่ยนไม่ได้');\n\nmsg.topic = 'UPDATE users SET role = ? WHERE id = ? AND role IS NULL';\nmsg.payload = [role, msg.user.id];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 570,
+        "y": 480,
+        "wires": [
+            [
+                "auth_role_save"
+            ]
+        ]
+    },
+    {
+        "id": "auth_role_save",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Save role",
+        "z": "tab_auth",
+        "x": 780,
+        "y": 480,
+        "wires": [
+            [
+                "auth_role_check"
+            ]
+        ]
+    },
+    {
+        "id": "auth_role_check",
+        "type": "function",
+        "name": "Check role was saved",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nif (msg.payload.affectedRows !== 1) return fail(409, 'ROLE_ALREADY_SET', 'เลือกบทบาทไปแล้ว เปลี่ยนไม่ได้');\nmsg.sessionUserId = msg.user.id;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 990,
+        "y": 480,
+        "wires": [
+            [
+                "auth_role_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_role_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 480,
+        "wires": [
+            [
+                "auth_role_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_role_respond",
+        "type": "function",
+        "name": "Format user response",
+        "func": "msg.statusCode = 200;\nmsg.payload = { user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1410,
+        "y": 480,
+        "wires": [
+            [
+                "auth_role_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_role_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1620,
+        "y": 480
+    },
+    {
+        "id": "auth_profile_in",
+        "type": "http in",
+        "name": "PUT /api/auth/onboarding/profile",
+        "url": "/api/auth/onboarding/profile",
+        "method": "put",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 540,
+        "wires": [
+            [
+                "auth_profile_auth"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_auth",
+        "type": "subflow:sf_auth_check",
+        "name": "auth-check (seeker,shop)",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker,shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 540,
+        "wires": [
+            [
+                "auth_profile_switch"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_switch",
+        "type": "switch",
+        "name": "By role",
+        "property": "user.role",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "seeker",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "shop",
+                "vt": "str"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "wires": [
+            [
+                "auth_profile_seeker_validate"
+            ],
+            [
+                "auth_profile_shop_validate"
+            ]
+        ],
+        "z": "tab_auth",
+        "x": 570,
+        "y": 540
+    },
+    {
+        "id": "auth_profile_seeker_validate",
+        "type": "function",
+        "name": "Validate seeker profile",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst b = msg.payload || {};\nconst str = (v) => (typeof v === 'string' ? v.trim() : '');\nconst toId = (v) => (Number.isInteger(v) && v > 0 ? v : null);\n\nconst fullName = str(b.fullName);\nif (!fullName || fullName.length > 150) return fail(400, 'VALIDATION_ERROR', 'กรุณากรอกชื่อ-นามสกุล (ไม่เกิน 150 ตัวอักษร)');\n\nconst birthDate = str(b.birthDate);\nconst m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(birthDate);\nconst bd = m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;\nif (!bd || bd.getUTCMonth() !== +m[2] - 1 || bd.getUTCDate() !== +m[3]) {\n    return fail(400, 'VALIDATION_ERROR', 'วันเกิดไม่ถูกต้อง');\n}\nconst today = new Date(Date.now() + 7 * 3600 * 1000); // Asia/Bangkok\nlet age = today.getUTCFullYear() - +m[1];\nif (today.getUTCMonth() + 1 < +m[2] || (today.getUTCMonth() + 1 === +m[2] && today.getUTCDate() < +m[3])) age--;\nif (age < 18) return fail(400, 'UNDERAGE', 'ผู้หางานต้องมีอายุ 18 ปีขึ้นไป');\nif (age > 100) return fail(400, 'VALIDATION_ERROR', 'วันเกิดไม่ถูกต้อง');\n\nconst phone = str(b.phone).replace(/[\\s-]/g, '');\nif (!/^0\\d{8,9}$/.test(phone)) return fail(400, 'VALIDATION_ERROR', 'เบอร์โทรไม่ถูกต้อง');\n\nconst lineId = str(b.lineId);\nif (lineId && !/^@?[A-Za-z0-9._-]{1,50}$/.test(lineId)) return fail(400, 'VALIDATION_ERROR', 'LINE ID ไม่ถูกต้อง');\n\nconst skills = str(b.skills);\nconst bio = str(b.bio);\nif (skills.length > 500) return fail(400, 'VALIDATION_ERROR', 'ทักษะยาวเกิน 500 ตัวอักษร');\nif (bio.length > 1000) return fail(400, 'VALIDATION_ERROR', 'แนะนำตัวยาวเกิน 1000 ตัวอักษร');\n\n// Areas: [{ provinceId, districtId|null }]; null district = whole province (wins over its districts)\nif (!Array.isArray(b.areas) || b.areas.length < 1 || b.areas.length > 30) {\n    return fail(400, 'VALIDATION_ERROR', 'กรุณาเลือกพื้นที่ที่สนใจอย่างน้อย 1 แห่ง');\n}\nconst byProvince = new Map();\nfor (const a of b.areas) {\n    const provinceId = toId(a && a.provinceId);\n    const districtId = a && a.districtId !== null && a.districtId !== undefined ? toId(a.districtId) : null;\n    if (!provinceId || (a.districtId !== null && a.districtId !== undefined && !districtId)) {\n        return fail(400, 'VALIDATION_ERROR', 'ข้อมูลพื้นที่ไม่ถูกต้อง');\n    }\n    if (!byProvince.has(provinceId)) byProvince.set(provinceId, new Set());\n    byProvince.get(provinceId).add(districtId);\n}\nconst areas = [];\nfor (const [provinceId, districts] of byProvince) {\n    if (districts.has(null)) areas.push({ provinceId, districtId: null });\n    else for (const districtId of districts) areas.push({ provinceId, districtId });\n}\n\nmsg.ctx = { fullName, birthDate, phone, lineId: lineId || null, skills: skills || null, bio: bio || null, areas };\nconst provinceIds = [...byProvince.keys()];\nconst districtIds = areas.filter((a) => a.districtId).map((a) => a.districtId);\nmsg.topic = 'SELECT id FROM provinces WHERE id IN (?); SELECT id, province_id FROM districts WHERE id IN (?)';\nmsg.payload = [provinceIds, districtIds.length ? districtIds : [0]];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 780,
+        "y": 540,
+        "wires": [
+            [
+                "auth_profile_seeker_geo"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_seeker_geo",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Load provinces / districts",
+        "z": "tab_auth",
+        "x": 990,
+        "y": 540,
+        "wires": [
+            [
+                "auth_profile_seeker_build"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_seeker_build",
+        "type": "function",
+        "name": "Check areas, build save query",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst [provinceRows, districtRows] = msg.payload;\nconst provinces = new Set(provinceRows.map((r) => r.id));\nconst districtProvince = new Map(districtRows.map((r) => [r.id, r.province_id]));\nconst c = msg.ctx;\n\nfor (const a of c.areas) {\n    if (!provinces.has(a.provinceId)) return fail(400, 'VALIDATION_ERROR', 'ไม่พบจังหวัดที่เลือก');\n    if (a.districtId && districtProvince.get(a.districtId) !== a.provinceId) {\n        return fail(400, 'VALIDATION_ERROR', 'อำเภอไม่อยู่ในจังหวัดที่เลือก');\n    }\n}\n\nconst uid = msg.user.id;\n// Not a transaction: inputs are fully validated above, so the later statements cannot fail on data\nmsg.topic = `INSERT INTO seeker_profiles (user_id, full_name, birth_date, phone, line_id, skills, bio)\n    VALUES (?, ?, ?, ?, ?, ?, ?) AS new\n    ON DUPLICATE KEY UPDATE full_name = new.full_name, birth_date = new.birth_date, phone = new.phone,\n        line_id = new.line_id, skills = new.skills, bio = new.bio;\nDELETE FROM seeker_areas WHERE user_id = ?;\nINSERT INTO seeker_areas (user_id, province_id, district_id) VALUES ?`;\nmsg.payload = [uid, c.fullName, c.birthDate, c.phone, c.lineId, c.skills, c.bio, uid,\n    c.areas.map((a) => [uid, a.provinceId, a.districtId])];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 540,
+        "wires": [
+            [
+                "auth_profile_save"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_shop_validate",
+        "type": "function",
+        "name": "Validate shop profile",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst b = msg.payload || {};\nconst str = (v) => (typeof v === 'string' ? v.trim() : '');\nconst toId = (v) => (Number.isInteger(v) && v > 0 ? v : null);\n\nconst shopName = str(b.shopName);\nif (!shopName || shopName.length > 150) return fail(400, 'VALIDATION_ERROR', 'กรุณากรอกชื่อร้าน (ไม่เกิน 150 ตัวอักษร)');\nconst address = str(b.address);\nif (!address || address.length > 500) return fail(400, 'VALIDATION_ERROR', 'กรุณากรอกที่อยู่ร้าน (ไม่เกิน 500 ตัวอักษร)');\nconst provinceId = toId(b.provinceId);\nconst districtId = toId(b.districtId);\nif (!provinceId || !districtId) return fail(400, 'VALIDATION_ERROR', 'กรุณาเลือกจังหวัดและอำเภอ');\nconst phone = str(b.phone).replace(/[\\s-]/g, '');\nif (!/^0\\d{8,9}$/.test(phone)) return fail(400, 'VALIDATION_ERROR', 'เบอร์โทรไม่ถูกต้อง');\nconst lineId = str(b.lineId);\nif (lineId && !/^@?[A-Za-z0-9._-]{1,50}$/.test(lineId)) return fail(400, 'VALIDATION_ERROR', 'LINE ID ไม่ถูกต้อง');\nconst description = str(b.description);\nif (description.length > 2000) return fail(400, 'VALIDATION_ERROR', 'รายละเอียดร้านยาวเกิน 2000 ตัวอักษร');\n\nmsg.ctx = { shopName, address, provinceId, districtId, phone, lineId: lineId || null, description: description || null };\nmsg.topic = 'SELECT id FROM districts WHERE id = ? AND province_id = ?';\nmsg.payload = [districtId, provinceId];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 150,
+        "y": 600,
+        "wires": [
+            [
+                "auth_profile_shop_geo"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_shop_geo",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Check district in province",
+        "z": "tab_auth",
+        "x": 360,
+        "y": 600,
+        "wires": [
+            [
+                "auth_profile_shop_build"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_shop_build",
+        "type": "function",
+        "name": "Build shop save query",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nif (!msg.payload.length) return fail(400, 'VALIDATION_ERROR', 'อำเภอไม่อยู่ในจังหวัดที่เลือก');\nconst c = msg.ctx;\nmsg.topic = `INSERT INTO shops (owner_user_id, name, description, address, province_id, district_id, phone, line_id)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?) AS new\n    ON DUPLICATE KEY UPDATE name = new.name, description = new.description, address = new.address,\n        province_id = new.province_id, district_id = new.district_id, phone = new.phone, line_id = new.line_id`;\nmsg.payload = [msg.user.id, c.shopName, c.description, c.address, c.provinceId, c.districtId, c.phone, c.lineId];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 570,
+        "y": 600,
+        "wires": [
+            [
+                "auth_profile_save"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_save",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Save profile",
+        "z": "tab_auth",
+        "x": 990,
+        "y": 660,
+        "wires": [
+            [
+                "auth_profile_user"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_user",
+        "type": "function",
+        "name": "Use current user",
+        "func": "msg.sessionUserId = msg.user.id;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 660,
+        "wires": [
+            [
+                "auth_profile_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 1410,
+        "y": 660,
+        "wires": [
+            [
+                "auth_profile_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_respond",
+        "type": "function",
+        "name": "Format user response",
+        "func": "msg.statusCode = 200;\nmsg.payload = { user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1620,
+        "y": 660,
+        "wires": [
+            [
+                "auth_profile_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_profile_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1830,
+        "y": 660
+    },
+    {
+        "id": "auth_terms_in",
+        "type": "http in",
+        "name": "POST /api/auth/onboarding/accept-terms",
+        "url": "/api/auth/onboarding/accept-terms",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_auth",
+        "x": 150,
+        "y": 720,
+        "wires": [
+            [
+                "auth_terms_auth"
+            ]
+        ]
+    },
+    {
+        "id": "auth_terms_auth",
+        "type": "subflow:sf_auth_check",
+        "name": "auth-check (seeker,shop)",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker,shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 360,
+        "y": 720,
+        "wires": [
+            [
+                "auth_terms_validate"
+            ]
+        ]
+    },
+    {
+        "id": "auth_terms_validate",
+        "type": "function",
+        "name": "Validate consent",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst b = msg.payload || {};\nif (b.acceptTerms !== true || b.acceptPdpa !== true) {\n    return fail(400, 'VALIDATION_ERROR', 'กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว');\n}\n// Completes onboarding only if the role's profile exists\nmsg.topic = `UPDATE users u\n    SET u.pdpa_accepted_at = COALESCE(u.pdpa_accepted_at, NOW()), u.profile_completed = 1\n    WHERE u.id = ?\n      AND ((u.role = 'seeker' AND EXISTS (SELECT 1 FROM seeker_profiles sp WHERE sp.user_id = u.id))\n        OR (u.role = 'shop' AND EXISTS (SELECT 1 FROM shops s WHERE s.owner_user_id = u.id)))`;\nmsg.payload = [msg.user.id];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 570,
+        "y": 720,
+        "wires": [
+            [
+                "auth_terms_save"
+            ]
+        ]
+    },
+    {
+        "id": "auth_terms_save",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Save consent",
+        "z": "tab_auth",
+        "x": 780,
+        "y": 720,
+        "wires": [
+            [
+                "auth_terms_user"
+            ]
+        ]
+    },
+    {
+        "id": "auth_terms_user",
+        "type": "function",
+        "name": "Use current user",
+        "func": "msg.sessionUserId = msg.user.id;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 990,
+        "y": 720,
+        "wires": [
+            [
+                "auth_terms_session"
+            ]
+        ]
+    },
+    {
+        "id": "auth_terms_session",
+        "type": "subflow:sf_session_user",
+        "name": "session-user",
+        "env": [
+            {
+                "name": "ISSUE_TOKEN",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_auth",
+        "x": 1200,
+        "y": 720,
+        "wires": [
+            [
+                "auth_terms_respond"
+            ]
+        ]
+    },
+    {
+        "id": "auth_terms_respond",
+        "type": "function",
+        "name": "Check profile, format response",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nif (msg.sessionUser.onboardingStep !== 'done') {\n    return fail(409, 'PROFILE_INCOMPLETE', 'กรุณากรอกข้อมูลโปรไฟล์ให้ครบก่อน');\n}\nmsg.statusCode = 200;\nmsg.payload = { user: msg.sessionUser };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_auth",
+        "x": 1410,
+        "y": 720,
+        "wires": [
+            [
+                "auth_terms_out"
+            ]
+        ]
+    },
+    {
+        "id": "auth_terms_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_auth",
+        "x": 1620,
+        "y": 720
+    },
+    {
+        "id": "cmt_seeker",
+        "type": "comment",
+        "z": "tab_seeker",
+        "name": "/api/seeker/* (role: seeker)",
+        "info": "",
+        "x": 150,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "seeker_catch",
+        "type": "catch",
+        "z": "tab_seeker",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "seeker_err"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_seeker",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "seeker_avatar_in",
+        "type": "http in",
+        "name": "POST /api/seeker/profile/avatar",
+        "url": "/api/seeker/profile/avatar",
+        "method": "post",
+        "upload": true,
+        "swaggerDoc": "",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_auth",
+        "type": "subflow:sf_auth_check",
+        "name": "auth-check (seeker)",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_validate"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_validate",
+        "type": "function",
+        "name": "Validate image (jpg/png, 5 MB)",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst files = (msg.req.files || []).filter((f) => f.fieldname === 'file');\nif (files.length !== 1) return fail(400, 'VALIDATION_ERROR', 'กรุณาเลือกไฟล์รูป 1 ไฟล์ (ชื่อฟิลด์ file)');\nconst f = files[0];\nif (f.size > 5 * 1024 * 1024) return fail(413, 'FILE_TOO_LARGE', 'ไฟล์ต้องมีขนาดไม่เกิน 5 MB');\n\n// Check the file signature, not the client-supplied mimetype / name\nconst buf = f.buffer;\nlet ext = null;\nif (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) ext = 'jpg';\nelse if (buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) ext = 'png';\nif (!ext) return fail(415, 'UNSUPPORTED_FILE_TYPE', 'รองรับเฉพาะไฟล์ JPG หรือ PNG');\n\nmsg.ctx = { fileName: global.get('crypto').randomBytes(16).toString('hex') + '.' + ext, buffer: buf };\nmsg.topic = 'SELECT avatar_file FROM seeker_profiles WHERE user_id = ?';\nmsg.payload = [msg.user.id];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_current"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_current",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Load current avatar",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_prepare",
+        "type": "function",
+        "name": "Prepare file write",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst row = msg.payload[0];\nif (!row) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกโปรไฟล์ก่อนอัปโหลดรูป');\nmsg.ctx.oldFile = row.avatar_file;\nmsg.filename = '/data/uploads/public/avatars/' + msg.ctx.fileName;\nmsg.payload = msg.ctx.buffer;\ndelete msg.ctx.buffer;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_write"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_write",
+        "type": "file",
+        "name": "Write avatar file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_build"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_build",
+        "type": "function",
+        "name": "Build avatar update",
+        "func": "msg.topic = 'UPDATE seeker_profiles SET avatar_file = ? WHERE user_id = ?';\nmsg.payload = [msg.ctx.fileName, msg.user.id];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_seeker",
+        "x": 1410,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_save"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_save",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Save avatar file name",
+        "z": "tab_seeker",
+        "x": 1620,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_respond"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_respond",
+        "type": "function",
+        "name": "Respond, remove old file",
+        "func": "const oldFile = msg.ctx.oldFile;\nmsg.statusCode = 200;\nmsg.payload = { avatarPath: 'avatars/' + msg.ctx.fileName };\nconst cleanup = oldFile ? { filename: '/data/uploads/public/avatars/' + oldFile } : null;\nreturn [msg, cleanup];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_seeker",
+        "x": 1830,
+        "y": 100,
+        "wires": [
+            [
+                "seeker_avatar_out"
+            ],
+            [
+                "seeker_avatar_delete"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_avatar_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_seeker",
+        "x": 2040,
+        "y": 100
+    },
+    {
+        "id": "seeker_avatar_delete",
+        "type": "file",
+        "z": "tab_seeker",
+        "name": "Delete old avatar",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": false,
+        "overwriteFile": "delete",
+        "encoding": "none",
+        "x": 1850,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cmt_geo",
+        "type": "comment",
+        "z": "tab_geo",
+        "name": "/api/geo (public, cached by the client)",
+        "info": "",
+        "x": 170,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "geo_catch",
+        "type": "catch",
+        "z": "tab_geo",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "geo_err"
+            ]
+        ]
+    },
+    {
+        "id": "geo_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_geo",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "geo_all_in",
+        "type": "http in",
+        "name": "GET /api/geo",
+        "url": "/api/geo",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_geo",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "geo_all_query"
+            ]
+        ]
+    },
+    {
+        "id": "geo_all_query",
+        "type": "function",
+        "name": "Build geo query",
+        "func": "msg.topic = 'SELECT id, name_th, name_en FROM regions ORDER BY id; '\n    + 'SELECT id, region_id, name_th, name_en FROM provinces ORDER BY id; '\n    + 'SELECT id, province_id, name_th, name_en FROM districts ORDER BY id';\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_geo",
+        "x": 360,
+        "y": 100,
+        "wires": [
+            [
+                "geo_all_load"
+            ]
+        ]
+    },
+    {
+        "id": "geo_all_load",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Load regions / provinces / districts",
+        "z": "tab_geo",
+        "x": 570,
+        "y": 100,
+        "wires": [
+            [
+                "geo_all_format"
+            ]
+        ]
+    },
+    {
+        "id": "geo_all_format",
+        "type": "function",
+        "name": "Format geo response",
+        "func": "const [regions, provinces, districts] = msg.payload;\nmsg.statusCode = 200;\nmsg.headers = { 'Cache-Control': 'public, max-age=86400' };\nmsg.payload = {\n    regions: regions.map((r) => ({ id: r.id, nameTh: r.name_th, nameEn: r.name_en })),\n    provinces: provinces.map((p) => ({ id: p.id, regionId: p.region_id, nameTh: p.name_th, nameEn: p.name_en })),\n    districts: districts.map((d) => ({ id: d.id, provinceId: d.province_id, nameTh: d.name_th, nameEn: d.name_en })),\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_geo",
+        "x": 780,
+        "y": 100,
+        "wires": [
+            [
+                "geo_all_out"
+            ]
+        ]
+    },
+    {
+        "id": "geo_all_out",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_geo",
+        "x": 990,
+        "y": 100
+    },
+    {
+        "id": "cmt_shop",
+        "type": "comment",
+        "z": "tab_shop",
+        "name": "/api/shop/* (role: shop)",
+        "info": "",
+        "x": 140,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "cmt_admin",
+        "type": "comment",
+        "z": "tab_admin",
+        "name": "/api/admin/* (role: admin)",
+        "info": "",
+        "x": 140,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "cmt_jobs",
+        "type": "comment",
+        "z": "tab_jobs",
+        "name": "/api/jobs/* (public)",
+        "info": "",
+        "x": 130,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "cmt_notifications",
+        "type": "comment",
+        "z": "tab_notifications",
+        "name": "Notification API and helpers",
+        "info": "",
+        "x": 150,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "cmt_scheduled",
+        "type": "comment",
+        "z": "tab_scheduled",
+        "name": "Daily midnight jobs (Asia/Bangkok)",
+        "info": "",
+        "x": 170,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "system_catch",
+        "type": "catch",
+        "z": "tab_system",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "system_err"
+            ]
+        ]
+    },
+    {
+        "id": "system_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_system",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "in_health",
+        "type": "http in",
+        "name": "GET /api/health",
+        "url": "/api/health",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "z": "tab_system",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "fn_health_query"
+            ]
+        ]
+    },
+    {
+        "id": "fn_health_query",
+        "type": "function",
+        "name": "Build health query",
+        "func": "msg.topic = \"SELECT DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s') AS server_time, (SELECT COUNT(*) FROM provinces) AS provinces\";\nmsg.payload = [];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_system",
+        "x": 360,
+        "y": 100,
+        "wires": [
+            [
+                "db_health"
+            ]
+        ]
+    },
+    {
+        "id": "db_health",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "name": "Query database",
+        "z": "tab_system",
+        "x": 570,
+        "y": 100,
+        "wires": [
+            [
+                "fn_health_response"
+            ]
+        ]
+    },
+    {
+        "id": "fn_health_response",
+        "type": "function",
+        "name": "Format health response",
+        "func": "const row = msg.payload[0];\nmsg.statusCode = 200;\nmsg.payload = { status: 'ok', database: 'connected', provinces: row.provinces, time: row.server_time };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "z": "tab_system",
+        "x": 780,
+        "y": 100,
+        "wires": [
+            [
+                "out_health"
+            ]
+        ]
+    },
+    {
+        "id": "out_health",
+        "type": "http response",
+        "name": "Send response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [],
+        "z": "tab_system",
+        "x": 990,
+        "y": 100
+    }
 ]

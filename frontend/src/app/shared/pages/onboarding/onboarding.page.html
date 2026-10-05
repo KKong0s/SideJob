@@ -1,0 +1,88 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>ตั้งค่าบัญชี ({{ stepNumber() }}/3)</ion-title>
+    <ion-buttons slot="end">
+      <app-logout-button></app-logout-button>
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-progress-bar [value]="stepNumber() / 3"></ion-progress-bar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="onboarding">
+    @switch (step()) {
+      @case ('role') {
+        <h2>คุณจะใช้ SideJob ในฐานะอะไร?</h2>
+        <ion-card button [disabled]="busy()" (click)="chooseRole('seeker')">
+          <ion-card-content class="role-card">
+            <ion-icon name="briefcase-outline" color="primary"></ion-icon>
+            <div>
+              <h3>ผู้หางาน</h3>
+              <p>หางานพาร์ทไทม์ใกล้บ้าน สมัครงาน และติดต่อร้าน</p>
+            </div>
+          </ion-card-content>
+        </ion-card>
+        <ion-card button [disabled]="busy()" (click)="chooseRole('shop')">
+          <ion-card-content class="role-card">
+            <ion-icon name="storefront-outline" color="primary"></ion-icon>
+            <div>
+              <h3>ร้านค้า / ผู้จ้างงาน</h3>
+              <p>ลงประกาศหาคนทำงาน และคัดเลือกผู้สมัคร</p>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      }
+
+      @case ('profile') {
+        <h2>{{ user()?.role === 'shop' ? 'ข้อมูลร้าน' : 'ข้อมูลของคุณ' }}</h2>
+        @if (geoReady()) {
+          @if (user()?.role === 'shop') {
+            <app-shop-profile-form (saved)="finish($event)"></app-shop-profile-form>
+          } @else {
+            <app-seeker-profile-form (saved)="finish($event)"></app-seeker-profile-form>
+          }
+        } @else if (geoError()) {
+          <p>โหลดข้อมูลจังหวัดไม่สำเร็จ</p>
+          <ion-button (click)="loadGeo()">ลองใหม่</ion-button>
+        } @else {
+          <div class="ion-text-center"><ion-spinner></ion-spinner></div>
+        }
+      }
+
+      @case ('terms') {
+        <h2>เงื่อนไขการใช้งานและความเป็นส่วนตัว</h2>
+        <div class="terms-text">
+          <h3>เงื่อนไขการใช้งาน</h3>
+          <ul>
+            <li>ข้อมูลที่กรอกต้องเป็นความจริง และใช้แพลตฟอร์มเพื่อหางานหรือจ้างงานโดยสุจริต</li>
+            <li>ห้ามโพสต์งานหรือข้อความที่ผิดกฎหมาย หลอกลวง หรือเลือกปฏิบัติ</li>
+            <li>SideJob เป็นตัวกลางเชื่อมผู้หางานกับร้าน ไม่ได้เป็นนายจ้างโดยตรง</li>
+            <li>ผู้ดูแลระบบสามารถซ่อนเนื้อหาหรือระงับบัญชีที่ละเมิดเงื่อนไขได้</li>
+          </ul>
+          <h3>นโยบายความเป็นส่วนตัว (PDPA)</h3>
+          <ul>
+            <li>เราเก็บอีเมล ชื่อ วันเกิด เบอร์โทร LINE ID พื้นที่ และรูปโปรไฟล์ เพื่อใช้จับคู่งานและติดต่อกัน</li>
+            <li>เบอร์โทรและ LINE ID จะแสดงให้อีกฝ่ายเห็นเฉพาะเมื่อร้านรับคุณเข้าทำงานแล้วเท่านั้น</li>
+            <li>เราไม่ขายหรือเปิดเผยข้อมูลส่วนบุคคลให้บุคคลภายนอก</li>
+            <li>คุณขอดู แก้ไข หรือลบข้อมูลของตัวเองได้ โดยติดต่อผู้ดูแลระบบ</li>
+          </ul>
+        </div>
+
+        <ion-checkbox labelPlacement="end" justify="start" [(ngModel)]="acceptTerms">
+          ฉันยอมรับเงื่อนไขการใช้งาน
+        </ion-checkbox>
+        <ion-checkbox labelPlacement="end" justify="start" [(ngModel)]="acceptPdpa">
+          ฉันยินยอมให้เก็บและใช้ข้อมูลส่วนบุคคลตามนโยบายความเป็นส่วนตัว
+        </ion-checkbox>
+
+        @if (error()) {
+          <ion-note color="danger">{{ error() }}</ion-note>
+        }
+
+        <ion-button expand="block" [disabled]="busy() || !acceptTerms || !acceptPdpa" (click)="submitTerms()">
+          @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { ยอมรับและเริ่มใช้งาน }
+        </ion-button>
+      }
+    }
+  </div>
+</ion-content>

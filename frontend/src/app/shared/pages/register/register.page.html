@@ -1,0 +1,64 @@
+<ion-content class="ion-padding">
+  <div class="auth-page">
+    <div class="brand">
+      <h1>SideJob</h1>
+      <p>หางานพาร์ทไทม์ใกล้บ้าน</p>
+    </div>
+
+    <h2>สมัครสมาชิก</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+      <ion-input
+        type="email"
+        label="อีเมล"
+        labelPlacement="floating"
+        fill="outline"
+        autocomplete="email"
+        formControlName="email"
+        errorText="กรุณากรอกอีเมลให้ถูกต้อง"
+      ></ion-input>
+
+      <ion-input
+        type="password"
+        label="รหัสผ่าน"
+        labelPlacement="floating"
+        fill="outline"
+        autocomplete="new-password"
+        formControlName="password"
+        helperText="อย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข"
+        errorText="อย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข"
+      >
+        <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+      </ion-input>
+
+      <ion-input
+        type="password"
+        label="ยืนยันรหัสผ่าน"
+        labelPlacement="floating"
+        fill="outline"
+        autocomplete="new-password"
+        formControlName="confirm"
+        errorText="กรุณายืนยันรหัสผ่าน"
+      >
+        <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+      </ion-input>
+
+      @if (form.hasError('mismatch') && form.controls.confirm.touched) {
+        <ion-note color="danger">รหัสผ่านทั้งสองช่องไม่ตรงกัน</ion-note>
+      }
+      @if (error()) {
+        <ion-note color="danger">{{ error() }}</ion-note>
+      }
+
+      <ion-button type="submit" expand="block" [disabled]="busy()">
+        @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { สมัครสมาชิก }
+      </ion-button>
+    </form>
+
+    <app-google-auth (signedIn)="goNext($event)"></app-google-auth>
+
+    <p class="switch">
+      มีบัญชีอยู่แล้ว? <a routerLink="/login">เข้าสู่ระบบ</a>
+    </p>
+  </div>
+</ion-content>

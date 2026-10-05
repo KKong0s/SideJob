@@ -1,30 +1,51 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 
-// Role areas are lazy-loaded. Guards (authGuard, roleGuard, profileCompleteGuard) are added in Phase 1.
+import { authGuard, guestGuard, onboardingGuard, profileCompleteGuard, roleGuard } from './shared/guards/auth.guards';
+import { AuthService } from './shared/services/auth.service';
+
+// Role areas are lazy-loaded; canMatch stops the chunk from loading for the wrong user.
 export const routes: Routes = [
   {
-    path: 'welcome',
-    loadComponent: () => import('./shared/pages/welcome/welcome.page').then((m) => m.WelcomePage),
+    path: 'login',
+    canMatch: [guestGuard],
+    loadComponent: () => import('./shared/pages/login/login.page').then((m) => m.LoginPage),
+  },
+  {
+    path: 'register',
+    canMatch: [guestGuard],
+    loadComponent: () => import('./shared/pages/register/register.page').then((m) => m.RegisterPage),
+  },
+  {
+    path: 'onboarding',
+    canMatch: [authGuard, onboardingGuard],
+    loadComponent: () => import('./shared/pages/onboarding/onboarding.page').then((m) => m.OnboardingPage),
   },
   {
     path: 'seeker',
+    canMatch: [authGuard, profileCompleteGuard, roleGuard],
+    data: { roles: ['seeker'] },
     loadChildren: () => import('./seeker/seeker.routes').then((m) => m.SEEKER_ROUTES),
   },
   {
     path: 'shop',
+    canMatch: [authGuard, profileCompleteGuard, roleGuard],
+    data: { roles: ['shop'] },
     loadChildren: () => import('./shop/shop.routes').then((m) => m.SHOP_ROUTES),
   },
   {
     path: 'admin',
+    canMatch: [authGuard, profileCompleteGuard, roleGuard],
+    data: { roles: ['admin'] },
     loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },
   {
     path: '',
-    redirectTo: 'welcome',
     pathMatch: 'full',
+    redirectTo: () => inject(AuthService).homeUrl(),
   },
   {
     path: '**',
-    redirectTo: 'welcome',
+    redirectTo: '',
   },
 ];

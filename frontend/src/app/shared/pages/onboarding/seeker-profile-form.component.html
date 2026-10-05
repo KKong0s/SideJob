@@ -1,0 +1,143 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="profile-form">
+  <div class="avatar-row">
+    <ion-avatar>
+      @if (avatarPreview(); as src) {
+        <img [src]="src" alt="รูปโปรไฟล์" />
+      } @else {
+        <ion-icon name="person-circle-outline"></ion-icon>
+      }
+    </ion-avatar>
+    <div>
+      <ion-button fill="outline" size="small" (click)="fileInput.click()">เลือกรูปโปรไฟล์</ion-button>
+      <ion-note>JPG หรือ PNG ไม่เกิน 5 MB (ไม่บังคับ)</ion-note>
+      @if (avatarError()) {
+        <ion-note color="danger">{{ avatarError() }}</ion-note>
+      }
+    </div>
+    <input #fileInput type="file" accept="image/jpeg,image/png" hidden (change)="onAvatarSelected($event)" />
+  </div>
+
+  <ion-input
+    label="ชื่อ-นามสกุล *"
+    labelPlacement="floating"
+    fill="outline"
+    autocomplete="name"
+    formControlName="fullName"
+    errorText="กรุณากรอกชื่อ-นามสกุล"
+  ></ion-input>
+
+  <ion-input
+    type="date"
+    label="วันเกิด *"
+    labelPlacement="stacked"
+    fill="outline"
+    [max]="maxBirthDate"
+    formControlName="birthDate"
+    errorText="ต้องมีอายุ 18 ปีขึ้นไป"
+  ></ion-input>
+
+  <ion-input
+    type="tel"
+    inputmode="tel"
+    label="เบอร์โทร *"
+    labelPlacement="floating"
+    fill="outline"
+    autocomplete="tel"
+    formControlName="phone"
+    errorText="เบอร์โทรไม่ถูกต้อง เช่น 0812345678"
+  ></ion-input>
+
+  <ion-input
+    label="LINE ID"
+    labelPlacement="floating"
+    fill="outline"
+    formControlName="lineId"
+    helperText="ร้านจะเห็นเบอร์โทรและ LINE ID หลังรับคุณเข้าทำงานเท่านั้น"
+    errorText="LINE ID ไม่ถูกต้อง"
+  ></ion-input>
+
+  <section class="areas">
+    <h3>พื้นที่ที่สนใจหางาน *</h3>
+
+    @if (areas().length) {
+      <div class="chips">
+        @for (area of areas(); track $index) {
+          <ion-chip (click)="removeArea(area)">
+            <ion-label>{{ areaLabel(area) }}</ion-label>
+            <ion-icon name="close-circle"></ion-icon>
+          </ion-chip>
+        }
+      </div>
+    }
+
+    <ion-select
+      label="จังหวัด"
+      labelPlacement="floating"
+      fill="outline"
+      interface="modal"
+      cancelText="ยกเลิก"
+      [value]="pickProvince()"
+      (ionChange)="onProvinceChange($event.detail.value)"
+    >
+      @for (p of geo.provinces(); track p.id) {
+        <ion-select-option [value]="p.id">{{ p.nameTh }}</ion-select-option>
+      }
+    </ion-select>
+
+    @if (pickProvince(); as provinceId) {
+      <ion-select
+        [label]="geo.districtLabel(provinceId) + ' (เลือกได้หลายแห่ง)'"
+        labelPlacement="floating"
+        fill="outline"
+        interface="modal"
+        [multiple]="true"
+        cancelText="เสร็จ"
+        placeholder="ทั้งจังหวัด"
+        [value]="pickDistricts()"
+        (ionChange)="pickDistricts.set($event.detail.value ?? [])"
+      >
+        <ion-select-option [value]="WHOLE_PROVINCE">ทั้งจังหวัด</ion-select-option>
+        @for (d of geo.districtsOf(provinceId); track d.id) {
+          <ion-select-option [value]="d.id">{{ d.nameTh }}</ion-select-option>
+        }
+      </ion-select>
+      <ion-button fill="outline" expand="block" (click)="addArea()">
+        <ion-icon slot="start" name="add-outline"></ion-icon>
+        เพิ่มพื้นที่นี้
+      </ion-button>
+    }
+
+    @if (areasTouched() && areas().length === 0) {
+      <ion-note color="danger">กรุณาเลือกพื้นที่อย่างน้อย 1 แห่ง</ion-note>
+    }
+  </section>
+
+  <ion-textarea
+    label="ทักษะ / ประสบการณ์"
+    labelPlacement="floating"
+    fill="outline"
+    [autoGrow]="true"
+    [counter]="true"
+    [maxlength]="500"
+    formControlName="skills"
+    placeholder="เช่น ชงกาแฟ, ขับมอเตอร์ไซค์, พูดภาษาอังกฤษ"
+  ></ion-textarea>
+
+  <ion-textarea
+    label="แนะนำตัว"
+    labelPlacement="floating"
+    fill="outline"
+    [autoGrow]="true"
+    [counter]="true"
+    [maxlength]="1000"
+    formControlName="bio"
+  ></ion-textarea>
+
+  @if (error()) {
+    <ion-note color="danger">{{ error() }}</ion-note>
+  }
+
+  <ion-button type="submit" expand="block" [disabled]="busy()">
+    @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { บันทึกและไปต่อ }
+  </ion-button>
+</form>

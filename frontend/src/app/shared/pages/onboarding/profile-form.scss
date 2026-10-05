@@ -1,0 +1,45 @@
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  ion-avatar {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+  }
+
+  ion-icon {
+    width: 100%;
+    height: 100%;
+    color: var(--ion-color-medium);
+  }
+
+  ion-note {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+  }
+}
+
+.areas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  h3 {
+    margin: 8px 0 0;
+    font-size: 1rem;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+}
