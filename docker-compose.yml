@@ -1,0 +1,62 @@
+# Local development stack: MySQL + Node-RED
+# Usage: copy .env.example to .env, fill in values, then `docker compose up -d --build`
+# Database init scripts run only on the first start (empty mysql-data volume).
+# To re-create the database from scratch: `docker compose down -v` then up again.
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: sidejob-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+07:00
+    environment:
+      TZ: Asia/Bangkok
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_APP_USER: ${DB_USER:?set DB_USER in .env}
+      MYSQL_APP_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/thai-geo/geo.sql:/docker-entrypoint-initdb.d/02-geo.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/03-seed.sql:ro
+      - ./database/create-app-user.sh:/docker-entrypoint-initdb.d/04-create-app-user.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  nodered:
+    build: ./backend
+    image: sidejob-nodered
+    container_name: sidejob-nodered
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Bangkok
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: sidejob
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      NODE_RED_ADMIN_USER: ${NODE_RED_ADMIN_USER:-admin}
+      NODE_RED_ADMIN_PASSWORD_HASH: ${NODE_RED_ADMIN_PASSWORD_HASH:?set NODE_RED_ADMIN_PASSWORD_HASH in .env}
+    ports:
+      - "${NODE_RED_PORT:-1881}:1880"
+    volumes:
+      - ./backend:/data
+
+volumes:
+  mysql-data:

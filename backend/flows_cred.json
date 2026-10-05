@@ -1,0 +1,3 @@
+{
+  "cfg_mysql_sidejob": { "user": "${DB_USER}", "password": "${DB_PASSWORD}" }
+}

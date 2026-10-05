@@ -1,0 +1,34 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>SideJob</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <h1>หางานพาร์ทไทม์ใกล้บ้าน</h1>
+  <p>หน้านี้ใช้ตรวจการตั้งค่าโปรเจกต์ (Phase 0)</p>
+
+  <ion-list inset>
+    <ion-item>
+      <ion-label>สถานะ API</ion-label>
+      @switch (health()) {
+        @case ('loading') { <ion-note slot="end">กำลังตรวจสอบ…</ion-note> }
+        @case ('ok') { <ion-note slot="end" color="success">ปกติ</ion-note> }
+        @case ('error') { <ion-note slot="end" color="danger">ผิดพลาด</ion-note> }
+      }
+    </ion-item>
+    @if (detail()) {
+      <ion-item>
+        <ion-label class="ion-text-wrap">{{ detail() }}</ion-label>
+      </ion-item>
+    }
+  </ion-list>
+
+  <ion-button expand="block" fill="outline" (click)="checkHealth()">ตรวจอีกครั้ง</ion-button>
+
+  <ion-list inset>
+    <ion-item routerLink="/seeker" detail>ส่วนผู้หางาน</ion-item>
+    <ion-item routerLink="/shop" detail>ส่วนร้านค้า</ion-item>
+    <ion-item routerLink="/admin" detail>ส่วนแอดมิน</ion-item>
+  </ion-list>
+</ion-content>
