@@ -75,3 +75,13 @@
     text-align: center;
   }
 }
+
+/* Chrome autofill paints a light-blue box on the native input inside ion-input.
+   Cover it with the page background so autofilled fields look like the others. */
+ion-input input:-webkit-autofill,
+ion-input input:-webkit-autofill:hover,
+ion-input input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--ion-background-color, #fff) inset !important;
+  -webkit-text-fill-color: var(--ion-text-color, #000) !important;
+  caret-color: var(--ion-text-color, #000);
+}
