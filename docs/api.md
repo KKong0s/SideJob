@@ -36,10 +36,14 @@ Every error uses the same body:
 | 403 | `FORBIDDEN` | Role not allowed for this endpoint |
 | 403 | `ACCOUNT_SUSPENDED` | Account suspended by an admin |
 | 403 | `PROFILE_INCOMPLETE` | Endpoint requires finished onboarding |
+| 403 | `SHOP_NOT_VERIFIED` | Shop must be verified to post / renew jobs |
 | 403 | `ADMIN_PASSWORD_ONLY` | Admin tried Google Sign-In |
 | 404 | `NOT_FOUND` | Resource does not exist (or caller may not see it) |
 | 409 | `EMAIL_TAKEN`, `ROLE_ALREADY_SET`, `PROFILE_REQUIRED`, `GOOGLE_LINK_REQUIRED`, `GOOGLE_ACCOUNT_CONFLICT`, `CONFLICT` | State conflict / duplicate |
 | 409 | `ALREADY_VERIFIED` | Shop tried to upload a verification document after being verified |
+| 409 | `JOB_LOCKED` | Job has applications, so wage / schedule cannot change |
+| 409 | `JOB_HIDDEN` | Job was hidden by an admin and cannot be edited / renewed |
+| 409 | `RENEW_LIMIT` | Job already expires 60 days ahead |
 | 409 | `INVALID_STATE` | Action not allowed in the current status (e.g. verifying a shop that is not pending) |
 | 413 | `FILE_TOO_LARGE` | Upload over 5 MB |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Upload type not allowed (images: JPG / PNG, verification documents: PDF / JPG / PNG; checked by file signature) |
@@ -271,6 +275,114 @@ Only `verified` shops can post jobs.
   clears the reject reason and replaces (deletes) any previous document.
 - **Response 200:** `{ "verifyStatus": "pending" }`
 - **Errors:** 400, 409 `PROFILE_REQUIRED` / `ALREADY_VERIFIED`, 413, 415
+
+### Job object (owner view)
+
+```json
+{
+  "id": 15,
+  "title": "พนักงานเสิร์ฟ",
+  "description": "...",
+  "category": { "id": 1, "name": "ร้านอาหาร / คาเฟ่", "icon": "restaurant-outline" },
+  "provinceId": 38, "districtId": 5001, "provinceName": "เชียงใหม่", "districtName": "เมืองเชียงใหม่",
+  "wage": 60, "wageUnit": "hour",
+  "scheduleType": "weekly",
+  "startDate": null, "endDate": null,
+  "workDays": ["sat", "sun"],
+  "startTime": "09:00", "endTime": "17:00",
+  "minAge": 20,
+  "expiresOn": "2026-11-05",
+  "status": "open",
+  "createdAt": "2026-10-06 10:00:00", "updatedAt": "2026-10-06 10:00:00",
+  "applicantCount": 3, "pendingCount": 1, "locked": true
+}
+```
+
+- `wageUnit`: `hour` | `day` | `job`; `status`: `open` | `closed` | `hidden` (hidden = by an admin)
+- `scheduleType: "dates"` uses `startDate` / `endDate`; `"weekly"` uses `workDays` (`mon` … `sun`).
+  For `dates` jobs the server also stores the weekdays covered by the range in `workDays`, so the work-day search filter works for both shapes.
+- `endTime` earlier than `startTime` = overnight shift.
+- `applicantCount` excludes cancelled applications; `locked` = has pending / accepted / completed applications.
+- A job stays open until the end of `expiresOn`; the Scheduled flow closes it at the next midnight.
+
+### Job input (create / update)
+
+```json
+{
+  "title": "พนักงานเสิร์ฟ", "description": "...", "categoryId": 1,
+  "provinceId": 38, "districtId": 5001,
+  "wage": 60, "wageUnit": "hour",
+  "scheduleType": "weekly", "workDays": ["sat", "sun"],
+  "startDate": null, "endDate": null,
+  "startTime": "09:00", "endTime": "17:00",
+  "minAge": null,
+  "expiresOn": "2026-11-05"
+}
+```
+
+- title 1–150, description 1–5000, active category, district inside the province
+- wage > 0 and ≤ 100,000 (2 decimals); times `HH:mm` and not equal
+- `dates`: valid dates, `endDate ≥ startDate`, start not in the past (on update: only checked when the schedule changes), end within 1 year
+- `weekly`: at least one weekday
+- `minAge`: null or 18–60
+- `expiresOn` (create only): tomorrow … today + 60 days, default today + 30
+
+### `GET /api/shop/jobs`
+
+- **Query:** `status` = `all` (default) | `open` | `closed` | `hidden`; `page`, `pageSize`
+- **Response 200:** page of job objects (owner view), newest first
+
+### `POST /api/shop/jobs`
+
+- **Role:** shop, **verified**
+- **Request:** job input
+- **Response 201:** `{ "job": <job object> }`
+- **Errors:** 400 `VALIDATION_ERROR`, 403 `SHOP_NOT_VERIFIED`
+
+### `GET /api/shop/jobs/:id`
+
+- Own job only (another shop's job → 404).
+- **Response 200:** `{ "job": <job object> }`
+
+### `PUT /api/shop/jobs/:id`
+
+- **Request:** job input (`expiresOn` is ignored; use renew)
+- If the job has applications, `wage`, `wageUnit`, `scheduleType`, dates, `workDays` and times must stay the same.
+- **Response 200:** `{ "job": <job object> }`
+- **Errors:** 400, 404, 409 `JOB_LOCKED` / `JOB_HIDDEN`
+
+### `POST /api/shop/jobs/:id/close`
+
+- Job must be `open`. Sets `closed`; **pending applications are rejected** and each seeker gets an `application.rejected` notification. One transaction.
+- **Response 200:** `{ "id": 15, "status": "closed", "rejectedApplications": 2 }`
+- **Errors:** 404, 409 `INVALID_STATE`
+
+### `POST /api/shop/jobs/:id/renew`
+
+- New expiry = max(today, current expiry) + 30 days, capped at today + 60. Also reopens a `closed` job.
+- **Response 200:** `{ "id": 15, "status": "open", "expiresOn": "2026-12-05" }`
+- **Errors:** 403 `SHOP_NOT_VERIFIED`, 404, 409 `JOB_HIDDEN` / `RENEW_LIMIT`
+
+## Jobs (public)
+
+### `GET /api/jobs/categories`
+
+- **Role:** public (`Cache-Control: public, max-age=300`)
+- **Response 200:** `{ "items": [{ "id": 1, "name": "ร้านอาหาร / คาเฟ่", "icon": "restaurant-outline" }] }` (active only, in display order)
+
+<!-- jobs-public -->
+
+## Scheduled
+
+### Daily expiry (inject, every day 00:00 Asia/Bangkok)
+
+Closes `open` jobs whose `expiresOn` is before today, rejects their pending applications (seekers notified)
+and notifies the shop (`job.expired`, link `/shop/jobs/:id`). One transaction.
+
+### `POST /api/admin/jobs/close-expired`
+
+- **Role:** admin. Runs the same flow immediately (for testing / demos).
+- **Response 200:** `{ "closedJobs": 1, "rejectedApplications": 1 }`
 
 ## Admin
 

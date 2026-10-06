@@ -3,6 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { JobInput, JobStatus, OwnJob } from '../models/job.model';
+import { Page, toHttpParams } from '../models/page.model';
 import { ShopProfileInput } from '../models/session.model';
 import { Shop } from '../models/shop.model';
 import { silentErrors } from '../utils/api-error';
@@ -30,6 +32,40 @@ export class ShopService {
 
   async uploadVerification(file: Blob, name: string): Promise<void> {
     await firstValueFrom(this.http.post(`${this.api}/verification`, toForm(file, name)));
+  }
+
+  // --- Job posts -----------------------------------------------------------
+
+  jobs(status: JobStatus | 'all', page: number, context?: HttpContext): Promise<Page<OwnJob>> {
+    return firstValueFrom(this.http.get<Page<OwnJob>>(`${this.api}/jobs`, { params: toHttpParams({ status, page }), context }));
+  }
+
+  async job(id: number, context?: HttpContext): Promise<OwnJob> {
+    const res = await firstValueFrom(this.http.get<{ job: OwnJob }>(`${this.api}/jobs/${id}`, { context }));
+    return res.job;
+  }
+
+  async createJob(input: JobInput): Promise<OwnJob> {
+    const res = await firstValueFrom(this.http.post<{ job: OwnJob }>(`${this.api}/jobs`, input, { context: silentErrors() }));
+    return res.job;
+  }
+
+  async updateJob(id: number, input: JobInput): Promise<OwnJob> {
+    const res = await firstValueFrom(
+      this.http.put<{ job: OwnJob }>(`${this.api}/jobs/${id}`, input, { context: silentErrors() }),
+    );
+    return res.job;
+  }
+
+  /** Returns how many pending applications were rejected automatically */
+  async closeJob(id: number): Promise<number> {
+    const res = await firstValueFrom(this.http.post<{ rejectedApplications: number }>(`${this.api}/jobs/${id}/close`, {}));
+    return res.rejectedApplications;
+  }
+
+  async renewJob(id: number): Promise<string> {
+    const res = await firstValueFrom(this.http.post<{ expiresOn: string }>(`${this.api}/jobs/${id}/renew`, {}));
+    return res.expiresOn;
   }
 }
 

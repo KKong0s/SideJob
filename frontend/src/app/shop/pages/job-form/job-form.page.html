@@ -1,0 +1,112 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/shop/jobs" text="กลับ"></ion-back-button></ion-buttons>
+    <ion-title>{{ isEdit() ? 'แก้ไขประกาศ' : 'โพสต์งานใหม่' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <app-page-state [state]="state()" (retry)="load()">
+    <form [formGroup]="form" (ngSubmit)="submit()" class="job-form">
+      <ion-input label="ชื่องาน *" labelPlacement="floating" fill="outline" formControlName="title" [counter]="true" [maxlength]="150"
+        placeholder="เช่น พนักงานเสิร์ฟ ร้านกาแฟ" errorText="กรุณากรอกชื่องาน"></ion-input>
+
+      <ion-select label="หมวดหมู่ *" labelPlacement="floating" fill="outline" formControlName="categoryId" interface="action-sheet"
+        cancelText="ยกเลิก" errorText="กรุณาเลือกหมวดหมู่">
+        @for (c of jobs.categories(); track c.id) {
+          <ion-select-option [value]="c.id">{{ c.name }}</ion-select-option>
+        }
+      </ion-select>
+
+      <ion-textarea label="รายละเอียดงาน *" labelPlacement="floating" fill="outline" formControlName="description" [autoGrow]="true"
+        [rows]="4" [counter]="true" [maxlength]="5000" placeholder="หน้าที่ คุณสมบัติ สวัสดิการ การแต่งกาย ฯลฯ"
+        errorText="กรุณากรอกรายละเอียดงาน"></ion-textarea>
+
+      <h3>สถานที่ทำงาน</h3>
+      <div class="row">
+        <ion-input class="picker-field" label="จังหวัด *" labelPlacement="floating" fill="outline" [readonly]="true"
+          [value]="form.controls.provinceId.value ? geo.provinceName(form.controls.provinceId.value) : ''"
+          [class.ion-touched]="invalid('provinceId')" [class.ion-invalid]="invalid('provinceId')" errorText="กรุณาเลือกจังหวัด"
+          (click)="chooseProvince()" (keydown.enter)="chooseProvince()">
+          <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
+        </ion-input>
+        <ion-input class="picker-field" [label]="geo.districtLabel(form.controls.provinceId.value) + ' *'" labelPlacement="floating"
+          fill="outline" [readonly]="true"
+          [value]="form.controls.districtId.value ? geo.districtName(form.controls.districtId.value) : ''"
+          [class.ion-touched]="invalid('districtId')" [class.ion-invalid]="invalid('districtId')"
+          [errorText]="'กรุณาเลือก' + geo.districtLabel(form.controls.provinceId.value)"
+          (click)="chooseDistrict()" (keydown.enter)="chooseDistrict()">
+          <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
+        </ion-input>
+      </div>
+
+      <h3>ค่าจ้างและวันเวลา</h3>
+      @if (locked()) {
+        <ion-note class="locked-note">
+          <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
+          มีผู้สมัครแล้ว จึงแก้ไขค่าจ้างและวันเวลาทำงานไม่ได้ (ถ้าต้องการเปลี่ยน ให้ปิดประกาศนี้แล้วโพสต์ใหม่)
+        </ion-note>
+      }
+      <div class="row">
+        <ion-input type="number" inputmode="decimal" label="ค่าจ้าง (บาท) *" labelPlacement="floating" fill="outline"
+          formControlName="wage" [min]="1" [max]="100000" errorText="ค่าจ้าง 1–100,000 บาท"></ion-input>
+        <ion-select label="ต่อ *" labelPlacement="floating" fill="outline" formControlName="wageUnit" interface="popover">
+          <ion-select-option value="hour">ชั่วโมง</ion-select-option>
+          <ion-select-option value="day">วัน</ion-select-option>
+          <ion-select-option value="job">งาน</ion-select-option>
+        </ion-select>
+      </div>
+
+      <ion-segment [value]="scheduleType()" (ionChange)="setScheduleType($any($event.detail.value))" [disabled]="locked()">
+        <ion-segment-button value="weekly"><ion-label>ทุกสัปดาห์</ion-label></ion-segment-button>
+        <ion-segment-button value="dates"><ion-label>ระบุวันที่</ion-label></ion-segment-button>
+      </ion-segment>
+
+      @if (scheduleType() === 'weekly') {
+        <div>
+          <div class="days" role="group" aria-label="วันทำงาน">
+            @for (day of weekdays; track day) {
+              <ion-chip [outline]="!workDays().includes(day)" [color]="workDays().includes(day) ? 'primary' : 'medium'"
+                [disabled]="locked()" (click)="toggleDay(day)" [attr.aria-pressed]="workDays().includes(day)">
+                {{ weekdayLabel[day] }}
+              </ion-chip>
+            }
+          </div>
+          @if (workDaysTouched() && workDays().length === 0) {
+            <ion-note color="danger">เลือกวันทำงานอย่างน้อย 1 วัน</ion-note>
+          }
+        </div>
+      } @else {
+        <div class="row">
+          <ion-input type="date" label="วันเริ่มงาน *" labelPlacement="stacked" fill="outline" formControlName="startDate" [min]="today"
+            [max]="maxWorkDate"></ion-input>
+          <ion-input type="date" label="วันสิ้นสุด *" labelPlacement="stacked" fill="outline" formControlName="endDate"
+            [min]="form.controls.startDate.value || today" [max]="maxWorkDate"></ion-input>
+        </div>
+      }
+
+      <div class="row">
+        <ion-input type="time" label="เวลาเริ่ม *" labelPlacement="stacked" fill="outline" formControlName="startTime"></ion-input>
+        <ion-input type="time" label="เวลาเลิก *" labelPlacement="stacked" fill="outline" formControlName="endTime"
+          helperText="ก่อนเวลาเริ่ม = กะข้ามคืน"></ion-input>
+      </div>
+
+      <h3>อื่น ๆ</h3>
+      <ion-input type="number" inputmode="numeric" label="อายุขั้นต่ำ (ไม่บังคับ)" labelPlacement="floating" fill="outline"
+        formControlName="minAge" [min]="18" [max]="60" helperText="ผู้หางานทุกคนอายุ 18 ปีขึ้นไปอยู่แล้ว" errorText="18–60 ปี"></ion-input>
+
+      @if (!isEdit()) {
+        <ion-input type="date" label="วันหมดอายุประกาศ *" labelPlacement="stacked" fill="outline" formControlName="expiresOn"
+          [min]="minExpiry" [max]="maxExpiry" helperText="ค่าเริ่มต้น 30 วัน (สูงสุด 60 วัน) ต่ออายุได้ภายหลัง"></ion-input>
+      }
+
+      @if (error()) {
+        <ion-note color="danger">{{ error() }}</ion-note>
+      }
+
+      <ion-button type="submit" expand="block" [disabled]="busy()">
+        @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { {{ isEdit() ? 'บันทึกการแก้ไข' : 'โพสต์ประกาศ' }} }
+      </ion-button>
+    </form>
+  </app-page-state>
+</ion-content>

@@ -3747,5 +3747,1056 @@
         "statusCode": "",
         "headers": {},
         "wires": []
+    },
+    {
+        "id": "jobs_catch",
+        "type": "catch",
+        "z": "tab_jobs",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "jobs_err"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_jobs",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "jobs_cmt_categories_phase_3",
+        "type": "comment",
+        "z": "tab_jobs",
+        "name": "Categories (Phase 3)",
+        "info": "",
+        "x": 170,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "jobs_categories_in",
+        "z": "tab_jobs",
+        "x": 150,
+        "y": 130,
+        "name": "GET /api/jobs/categories",
+        "type": "http in",
+        "url": "/api/jobs/categories",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "jobs_categories_build_category_query"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_categories_build_category_query",
+        "z": "tab_jobs",
+        "x": 360,
+        "y": 130,
+        "name": "Build category query",
+        "type": "function",
+        "func": "msg.topic = 'SELECT id, name, icon FROM categories WHERE is_active = 1 ORDER BY sort_order, name';\nmsg.payload = [];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_categories_load_categories"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_categories_load_categories",
+        "z": "tab_jobs",
+        "x": 570,
+        "y": 130,
+        "name": "Load categories",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "jobs_categories_format_categories"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_categories_format_categories",
+        "z": "tab_jobs",
+        "x": 780,
+        "y": 130,
+        "name": "Format categories",
+        "type": "function",
+        "func": "msg.statusCode = 200;\nmsg.headers = { 'Cache-Control': 'public, max-age=300' };\nmsg.payload = { items: msg.payload.map((r) => ({ id: r.id, name: r.name, icon: r.icon })) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_categories_out"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_categories_out",
+        "z": "tab_jobs",
+        "x": 990,
+        "y": 130,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_cmt_job_posts_phase_3_always_scoped_to_s_own",
+        "type": "comment",
+        "z": "tab_shop",
+        "name": "Job posts (Phase 3) — always scoped to s.owner_user_id = msg.user.id",
+        "info": "",
+        "x": 170,
+        "y": 490,
+        "wires": []
+    },
+    {
+        "id": "shop_jobs_list_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 540,
+        "name": "GET /api/shop/jobs",
+        "type": "http in",
+        "url": "/api/shop/jobs",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_jobs_list_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_jobs_list_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 540,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_jobs_list_build_own_job_list_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_jobs_list_build_own_job_list_query",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 540,
+        "name": "Build own job list query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\nconst sj = global.get('sj');\nconst q = msg.req.query;\nconst p = (msg.ctx = sj.paging(q));\nconst status = q.status || 'all';\nif (!['open', 'closed', 'hidden', 'all'].includes(status)) return fail(400, 'VALIDATION_ERROR', 'สถานะไม่ถูกต้อง');\nmsg.topic = `${OWN_JOB_SELECT}\n        WHERE s.owner_user_id = ? ${status === 'all' ? '' : 'AND j.status = ?'}\n        ORDER BY j.created_at DESC, j.id DESC\n        LIMIT ? OFFSET ?`;\nmsg.payload = status === 'all' ? [msg.user.id, p.limit, p.offset] : [msg.user.id, status, p.limit, p.offset];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_jobs_list_load_jobs"
+            ]
+        ]
+    },
+    {
+        "id": "shop_jobs_list_load_jobs",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 540,
+        "name": "Load jobs",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_jobs_list_format_job_list"
+            ]
+        ]
+    },
+    {
+        "id": "shop_jobs_list_format_job_list",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 540,
+        "name": "Format job list",
+        "type": "function",
+        "func": "const formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\nconst sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, formatOwnJob);\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_jobs_list_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_jobs_list_out",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 540,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_job_get_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 600,
+        "name": "GET /api/shop/jobs/:id",
+        "type": "http in",
+        "url": "/api/shop/jobs/:id",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_job_get_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_get_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 600,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_job_get_check_job_id"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_get_check_job_id",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 600,
+        "name": "Check job id",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nif (!routeId()) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_get_build_own_job_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_get_build_own_job_query",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 600,
+        "name": "Build own job query",
+        "type": "function",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\nconst id = Number(msg.req.params.id);\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?';\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_get_load_job"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_get_load_job",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 600,
+        "name": "Load job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_get_format_job_response"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_get_format_job_response",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 600,
+        "name": "Format job response",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: formatOwnJob(row) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_get_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_get_out",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 600,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_job_create_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 660,
+        "name": "POST /api/shop/jobs",
+        "type": "http in",
+        "url": "/api/shop/jobs",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_job_create_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 660,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_job_create_validate_job"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_validate_job",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 660,
+        "name": "Validate job",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Validates a job body. Returns { error } or { value }. Schedule dates must not be in the past when given.\nfunction validateJob(b, sj) {\n    const str = (v) => (typeof v === 'string' ? v.trim() : '');\n    const toId = (v) => (Number.isInteger(v) && v > 0 ? v : null);\n    const err = (error) => ({ error });\n    const today = sj.today();\n\n    const title = str(b.title);\n    if (!title || title.length > 150) return err('กรุณากรอกชื่องาน (ไม่เกิน 150 ตัวอักษร)');\n    const description = str(b.description);\n    if (!description || description.length > 5000) return err('กรุณากรอกรายละเอียดงาน (ไม่เกิน 5000 ตัวอักษร)');\n    const categoryId = toId(b.categoryId);\n    if (!categoryId) return err('กรุณาเลือกหมวดหมู่งาน');\n    const provinceId = toId(b.provinceId);\n    const districtId = toId(b.districtId);\n    if (!provinceId || !districtId) return err('กรุณาเลือกจังหวัดและอำเภอ');\n\n    const wage = typeof b.wage === 'number' ? Math.round(b.wage * 100) / 100 : NaN;\n    if (!(wage > 0 && wage <= 100000)) return err('ค่าจ้างต้องมากกว่า 0 และไม่เกิน 100,000 บาท');\n    if (!['hour', 'day', 'job'].includes(b.wageUnit)) return err('หน่วยค่าจ้างไม่ถูกต้อง');\n\n    const time = /^([01]\\d|2[0-3]):[0-5]\\d$/;\n    if (!time.test(b.startTime || '') || !time.test(b.endTime || '')) return err('เวลาทำงานไม่ถูกต้อง');\n    if (b.startTime === b.endTime) return err('เวลาเริ่มและเวลาเลิกงานต้องไม่ซ้ำกัน');\n\n    let startDate = null;\n    let endDate = null;\n    let workDays;\n    if (b.scheduleType === 'dates') {\n        if (!sj.parseDate(b.startDate) || !sj.parseDate(b.endDate)) return err('กรุณาเลือกวันเริ่มและวันสิ้นสุดงาน');\n        startDate = b.startDate;\n        endDate = b.endDate;\n        if (endDate < startDate) return err('วันสิ้นสุดต้องไม่ก่อนวันเริ่มงาน');\n        if (endDate > sj.addDays(today, 365)) return err('วันทำงานต้องอยู่ภายใน 1 ปี');\n        workDays = sj.weekdaysInRange(startDate, endDate);\n    } else if (b.scheduleType === 'weekly') {\n        if (!Array.isArray(b.workDays) || !b.workDays.length || b.workDays.some((w) => !sj.WEEKDAYS.includes(w))) {\n            return err('กรุณาเลือกวันทำงานอย่างน้อย 1 วัน');\n        }\n        workDays = sj.WEEKDAYS.filter((w) => b.workDays.includes(w));\n    } else {\n        return err('รูปแบบวันทำงานไม่ถูกต้อง');\n    }\n\n    let minAge = null;\n    if (b.minAge !== null && b.minAge !== undefined && b.minAge !== '') {\n        if (!Number.isInteger(b.minAge) || b.minAge < 18 || b.minAge > 60) return err('อายุขั้นต่ำต้องอยู่ระหว่าง 18–60 ปี');\n        minAge = b.minAge;\n    }\n\n    return {\n        value: {\n            title, description, categoryId, provinceId, districtId, wage, wageUnit: b.wageUnit,\n            scheduleType: b.scheduleType, startDate, endDate, workDays: workDays.join(','),\n            startTime: b.startTime, endTime: b.endTime, minAge,\n        },\n    };\n}\n\nconst sj = global.get('sj');\nconst b = msg.payload || {};\nconst r = validateJob(b, sj);\nif (r.error) return fail(400, 'VALIDATION_ERROR', r.error);\nconst v = r.value;\nif (v.startDate && v.startDate < sj.today()) return fail(400, 'VALIDATION_ERROR', 'วันเริ่มงานต้องไม่ใช่วันที่ผ่านมาแล้ว');\n\n// Expiry: 1-60 days ahead, default 30\nconst today = sj.today();\nconst expiresOn = b.expiresOn === undefined || b.expiresOn === null || b.expiresOn === '' ? sj.addDays(today, 30) : b.expiresOn;\nif (!sj.parseDate(expiresOn) || expiresOn <= today || expiresOn > sj.addDays(today, 60)) {\n        return fail(400, 'VALIDATION_ERROR', 'วันหมดอายุประกาศต้องอยู่ระหว่างพรุ่งนี้ถึง 60 วันข้างหน้า');\n}\nmsg.ctx = { job: { ...v, expiresOn } };\nmsg.topic = `SELECT id, verify_status FROM shops WHERE owner_user_id = ?;\n        SELECT id FROM categories WHERE id = ? AND is_active = 1;\n        SELECT id FROM districts WHERE id = ? AND province_id = ?`;\nmsg.payload = [msg.user.id, v.categoryId, v.districtId, v.provinceId];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_create_load_shop_category_district"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_load_shop_category_district",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 660,
+        "name": "Load shop / category / district",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_create_check_shop_verified_build_insert"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_check_shop_verified_build_insert",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 660,
+        "name": "Check shop verified, build insert",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst [[shop], [category], [district]] = msg.payload;\nif (!shop) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกข้อมูลร้านก่อน');\nif (shop.verify_status !== 'verified') return fail(403, 'SHOP_NOT_VERIFIED', 'ร้านต้องผ่านการยืนยันก่อนจึงจะโพสต์ประกาศได้');\nif (!category) return fail(400, 'VALIDATION_ERROR', 'ไม่พบหมวดหมู่ที่เลือก');\nif (!district) return fail(400, 'VALIDATION_ERROR', 'อำเภอไม่อยู่ในจังหวัดที่เลือก');\nconst j = msg.ctx.job;\nmsg.topic = `INSERT INTO jobs (shop_id, category_id, title, description, province_id, district_id, wage, wage_unit,\n                schedule_type, start_date, end_date, work_days, start_time, end_time, min_age, expires_on, status)\n        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')`;\nmsg.payload = [shop.id, j.categoryId, j.title, j.description, j.provinceId, j.districtId, j.wage, j.wageUnit,\n        j.scheduleType, j.startDate, j.endDate, j.workDays, j.startTime, j.endTime, j.minAge, j.expiresOn];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_create_insert_job"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_insert_job",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 660,
+        "name": "Insert job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_create_use_new_job_id"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_use_new_job_id",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 660,
+        "name": "Use new job id",
+        "type": "function",
+        "func": "msg.ctx = { created: true, jobId: msg.payload.insertId };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_create_build_own_job_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_build_own_job_query",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 660,
+        "name": "Build own job query",
+        "type": "function",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\nconst id = msg.ctx.jobId;\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?';\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_create_load_job"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_load_job",
+        "z": "tab_shop",
+        "x": 1830,
+        "y": 660,
+        "name": "Load job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_create_format_job_response"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_format_job_response",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 660,
+        "name": "Format job response",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: formatOwnJob(row) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_create_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_create_out",
+        "z": "tab_shop",
+        "x": 2250,
+        "y": 660,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_job_update_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 720,
+        "name": "PUT /api/shop/jobs/:id",
+        "type": "http in",
+        "url": "/api/shop/jobs/:id",
+        "method": "put",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_job_update_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 720,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_job_update_validate_job"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_validate_job",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 720,
+        "name": "Validate job",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Validates a job body. Returns { error } or { value }. Schedule dates must not be in the past when given.\nfunction validateJob(b, sj) {\n    const str = (v) => (typeof v === 'string' ? v.trim() : '');\n    const toId = (v) => (Number.isInteger(v) && v > 0 ? v : null);\n    const err = (error) => ({ error });\n    const today = sj.today();\n\n    const title = str(b.title);\n    if (!title || title.length > 150) return err('กรุณากรอกชื่องาน (ไม่เกิน 150 ตัวอักษร)');\n    const description = str(b.description);\n    if (!description || description.length > 5000) return err('กรุณากรอกรายละเอียดงาน (ไม่เกิน 5000 ตัวอักษร)');\n    const categoryId = toId(b.categoryId);\n    if (!categoryId) return err('กรุณาเลือกหมวดหมู่งาน');\n    const provinceId = toId(b.provinceId);\n    const districtId = toId(b.districtId);\n    if (!provinceId || !districtId) return err('กรุณาเลือกจังหวัดและอำเภอ');\n\n    const wage = typeof b.wage === 'number' ? Math.round(b.wage * 100) / 100 : NaN;\n    if (!(wage > 0 && wage <= 100000)) return err('ค่าจ้างต้องมากกว่า 0 และไม่เกิน 100,000 บาท');\n    if (!['hour', 'day', 'job'].includes(b.wageUnit)) return err('หน่วยค่าจ้างไม่ถูกต้อง');\n\n    const time = /^([01]\\d|2[0-3]):[0-5]\\d$/;\n    if (!time.test(b.startTime || '') || !time.test(b.endTime || '')) return err('เวลาทำงานไม่ถูกต้อง');\n    if (b.startTime === b.endTime) return err('เวลาเริ่มและเวลาเลิกงานต้องไม่ซ้ำกัน');\n\n    let startDate = null;\n    let endDate = null;\n    let workDays;\n    if (b.scheduleType === 'dates') {\n        if (!sj.parseDate(b.startDate) || !sj.parseDate(b.endDate)) return err('กรุณาเลือกวันเริ่มและวันสิ้นสุดงาน');\n        startDate = b.startDate;\n        endDate = b.endDate;\n        if (endDate < startDate) return err('วันสิ้นสุดต้องไม่ก่อนวันเริ่มงาน');\n        if (endDate > sj.addDays(today, 365)) return err('วันทำงานต้องอยู่ภายใน 1 ปี');\n        workDays = sj.weekdaysInRange(startDate, endDate);\n    } else if (b.scheduleType === 'weekly') {\n        if (!Array.isArray(b.workDays) || !b.workDays.length || b.workDays.some((w) => !sj.WEEKDAYS.includes(w))) {\n            return err('กรุณาเลือกวันทำงานอย่างน้อย 1 วัน');\n        }\n        workDays = sj.WEEKDAYS.filter((w) => b.workDays.includes(w));\n    } else {\n        return err('รูปแบบวันทำงานไม่ถูกต้อง');\n    }\n\n    let minAge = null;\n    if (b.minAge !== null && b.minAge !== undefined && b.minAge !== '') {\n        if (!Number.isInteger(b.minAge) || b.minAge < 18 || b.minAge > 60) return err('อายุขั้นต่ำต้องอยู่ระหว่าง 18–60 ปี');\n        minAge = b.minAge;\n    }\n\n    return {\n        value: {\n            title, description, categoryId, provinceId, districtId, wage, wageUnit: b.wageUnit,\n            scheduleType: b.scheduleType, startDate, endDate, workDays: workDays.join(','),\n            startTime: b.startTime, endTime: b.endTime, minAge,\n        },\n    };\n}\n\nconst sj = global.get('sj');\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nconst r = validateJob(msg.payload || {}, sj);\nif (r.error) return fail(400, 'VALIDATION_ERROR', r.error);\nconst v = r.value;\nmsg.ctx = { jobId: id, job: v };\nmsg.topic = `SELECT j.id, j.shop_id, j.status, j.wage, j.wage_unit, j.schedule_type,\n                     DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date,\n                     j.work_days, TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n                     (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\n        FROM jobs j JOIN shops s ON s.id = j.shop_id\n        WHERE j.id = ? AND s.owner_user_id = ?;\n        SELECT id FROM categories WHERE id = ? AND is_active = 1;\n        SELECT id FROM districts WHERE id = ? AND province_id = ?`;\nmsg.payload = [id, msg.user.id, v.categoryId, v.districtId, v.provinceId];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_update_load_job_category_district"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_load_job_category_district",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 720,
+        "name": "Load job / category / district",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_update_check_lock_rules_build_update"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_check_lock_rules_build_update",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 720,
+        "name": "Check lock rules, build update",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\nconst [[cur], [category], [district]] = msg.payload;\nif (!cur) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nif (cur.status === 'hidden') return fail(409, 'JOB_HIDDEN', 'ประกาศนี้ถูกแอดมินซ่อน แก้ไขไม่ได้');\nif (!category) return fail(400, 'VALIDATION_ERROR', 'ไม่พบหมวดหมู่ที่เลือก');\nif (!district) return fail(400, 'VALIDATION_ERROR', 'อำเภอไม่อยู่ในจังหวัดที่เลือก');\nconst j = msg.ctx.job;\n\nconst scheduleChanged =\n        j.scheduleType !== cur.schedule_type ||\n        j.startTime !== cur.start_time ||\n        j.endTime !== cur.end_time ||\n        (j.scheduleType === 'dates' ? j.startDate !== cur.start_date || j.endDate !== cur.end_date : j.workDays !== String(cur.work_days || ''));\nconst wageChanged = j.wage !== Number(cur.wage) || j.wageUnit !== cur.wage_unit;\n\n// Applicants signed up for the current wage and schedule\nif (Number(cur.active_count) > 0 && (scheduleChanged || wageChanged)) {\n        return fail(409, 'JOB_LOCKED', 'มีผู้สมัครแล้ว จึงแก้ไขค่าจ้างและวันเวลาทำงานไม่ได้');\n}\nif (scheduleChanged && j.startDate && j.startDate < sj.today()) {\n        return fail(400, 'VALIDATION_ERROR', 'วันเริ่มงานต้องไม่ใช่วันที่ผ่านมาแล้ว');\n}\n\nmsg.topic = `UPDATE jobs SET title = ?, description = ?, category_id = ?, province_id = ?, district_id = ?, wage = ?, wage_unit = ?,\n                schedule_type = ?, start_date = ?, end_date = ?, work_days = ?, start_time = ?, end_time = ?, min_age = ?\n        WHERE id = ? AND shop_id = ? AND status <> 'hidden'`;\nmsg.payload = [j.title, j.description, j.categoryId, j.provinceId, j.districtId, j.wage, j.wageUnit,\n        j.scheduleType, j.startDate, j.endDate, j.workDays, j.startTime, j.endTime, j.minAge, msg.ctx.jobId, cur.shop_id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_update_save_job"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_save_job",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 720,
+        "name": "Save job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_update_build_own_job_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_build_own_job_query",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 720,
+        "name": "Build own job query",
+        "type": "function",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\nconst id = msg.ctx.jobId;\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?';\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_update_load_job"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_load_job",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 720,
+        "name": "Load job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_update_format_job_response"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_format_job_response",
+        "z": "tab_shop",
+        "x": 1830,
+        "y": 720,
+        "name": "Format job response",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: formatOwnJob(row) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_update_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_update_out",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 720,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_job_close_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 780,
+        "name": "POST /api/shop/jobs/:id/close",
+        "type": "http in",
+        "url": "/api/shop/jobs/:id/close",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_job_close_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_close_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 780,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_job_close_close_job_reject_pending_applications_tr"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_close_close_job_reject_pending_applications_tr",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 780,
+        "name": "Close job, reject pending applications (transaction)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Rejects the pending applications of a job that stopped taking applicants, and tells each seeker\nasync function closePending(db, job) {\n    const sj = global.get('sj');\n    const [rows] = await db.query(\"SELECT id, seeker_user_id FROM applications WHERE job_id = ? AND status = 'pending' FOR UPDATE\", [job.id]);\n    if (!rows.length) return 0;\n    await db.query(\"UPDATE applications SET status = 'rejected', decided_at = NOW() WHERE id IN (?)\", [rows.map((r) => r.id)]);\n    await sj.notify(db, rows.map((r) => r.seeker_user_id), 'application.rejected',\n        `ประกาศ \"${job.title}\" ปิดรับสมัครแล้ว ใบสมัครของคุณจึงไม่ได้รับการพิจารณา`, '/seeker/applications');\n    return rows.length;\n}\n\ntry {\n    const id = routeId();\n    if (!id) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n    const rejected = await sj.tx(async (db) => {\n        const [[job]] = await db.query(\n            'SELECT j.id, j.title, j.status FROM jobs j JOIN shops s ON s.id = j.shop_id WHERE j.id = ? AND s.owner_user_id = ? FOR UPDATE',\n            [id, msg.user.id],\n        );\n        if (!job) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n        if (job.status !== 'open') throw sj.httpError(409, 'INVALID_STATE', 'ประกาศนี้ไม่ได้เปิดรับสมัครอยู่');\n        await db.query(\"UPDATE jobs SET status = 'closed' WHERE id = ?\", [id]);\n        return closePending(db, job);\n    });\n    msg.statusCode = 200;\n    msg.payload = { id, status: 'closed', rejectedApplications: rejected };\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_close_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_close_out",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 780,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_job_renew_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 840,
+        "name": "POST /api/shop/jobs/:id/renew",
+        "type": "http in",
+        "url": "/api/shop/jobs/:id/renew",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_job_renew_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_renew_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 840,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_job_renew_renew_job_30_days_max_60_ahead"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_renew_renew_job_30_days_max_60_ahead",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 840,
+        "name": "Renew job (+30 days, max 60 ahead)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\ntry {\n    const id = routeId();\n    if (!id) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n    const today = sj.today();\n    const result = await sj.tx(async (db) => {\n        const [[job]] = await db.query(\n            `SELECT j.id, j.status, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, s.verify_status\n             FROM jobs j JOIN shops s ON s.id = j.shop_id WHERE j.id = ? AND s.owner_user_id = ? FOR UPDATE`,\n            [id, msg.user.id],\n        );\n        if (!job) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n        if (job.status === 'hidden') throw sj.httpError(409, 'JOB_HIDDEN', 'ประกาศนี้ถูกแอดมินซ่อน ต่ออายุไม่ได้');\n        if (job.verify_status !== 'verified') throw sj.httpError(403, 'SHOP_NOT_VERIFIED', 'ร้านต้องผ่านการยืนยันก่อน');\n        const from = job.expires_on > today ? job.expires_on : today;\n        const max = sj.addDays(today, 60);\n        let expiresOn = sj.addDays(from, 30);\n        if (expiresOn > max) expiresOn = max;\n        if (job.status === 'open' && expiresOn <= job.expires_on) {\n            throw sj.httpError(409, 'RENEW_LIMIT', 'ประกาศนี้มีอายุถึง 60 วันข้างหน้าแล้ว');\n        }\n        await db.query(\"UPDATE jobs SET expires_on = ?, status = 'open' WHERE id = ?\", [expiresOn, id]);\n        return { expiresOn };\n    });\n    msg.statusCode = 200;\n    msg.payload = { id, status: 'open', expiresOn: result.expiresOn };\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_renew_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_renew_out",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 840,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "sched_catch",
+        "type": "catch",
+        "z": "tab_scheduled",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "sched_err"
+            ]
+        ]
+    },
+    {
+        "id": "sched_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_scheduled",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "sched_cmt_every_day_00_00_asia_bangkok_close_jobs_",
+        "type": "comment",
+        "z": "tab_scheduled",
+        "name": "Every day 00:00 Asia/Bangkok: close jobs past expires_on, reject their pending applications, notify",
+        "info": "",
+        "x": 170,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "sched_expire_every_day_at_midnight",
+        "z": "tab_scheduled",
+        "x": 150,
+        "y": 130,
+        "name": "Every day at midnight",
+        "type": "inject",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 00 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "wires": [
+            [
+                "sched_expire_close_expired_jobs_transaction"
+            ]
+        ]
+    },
+    {
+        "id": "sched_expire_close_expired_jobs_transaction",
+        "z": "tab_scheduled",
+        "x": 360,
+        "y": 130,
+        "name": "Close expired jobs (transaction)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Rejects the pending applications of a job that stopped taking applicants, and tells each seeker\nasync function closePending(db, job) {\n    const sj = global.get('sj');\n    const [rows] = await db.query(\"SELECT id, seeker_user_id FROM applications WHERE job_id = ? AND status = 'pending' FOR UPDATE\", [job.id]);\n    if (!rows.length) return 0;\n    await db.query(\"UPDATE applications SET status = 'rejected', decided_at = NOW() WHERE id IN (?)\", [rows.map((r) => r.id)]);\n    await sj.notify(db, rows.map((r) => r.seeker_user_id), 'application.rejected',\n        `ประกาศ \"${job.title}\" ปิดรับสมัครแล้ว ใบสมัครของคุณจึงไม่ได้รับการพิจารณา`, '/seeker/applications');\n    return rows.length;\n}\n\ntry {\n    const result = await sj.tx(async (db) => {\n        const [jobs] = await db.query(\n            `SELECT j.id, j.title, s.owner_user_id FROM jobs j JOIN shops s ON s.id = j.shop_id\n             WHERE j.status = 'open' AND j.expires_on < CURDATE() FOR UPDATE`,\n        );\n        if (!jobs.length) return { closedJobs: 0, rejectedApplications: 0 };\n        await db.query(\"UPDATE jobs SET status = 'closed' WHERE id IN (?)\", [jobs.map((j) => j.id)]);\n        let rejected = 0;\n        for (const job of jobs) {\n            rejected += await closePending(db, job);\n            await sj.notify(db, job.owner_user_id, 'job.expired', `ประกาศ \"${job.title}\" หมดอายุแล้ว กดต่ออายุได้ถ้ายังรับสมัครอยู่`, `/shop/jobs/${job.id}`);\n        }\n        return { closedJobs: jobs.length, rejectedApplications: rejected };\n    });\n    msg.statusCode = 200;\n    msg.payload = result;\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "sched_expire_reply_if_run_from_the_admin_api"
+            ]
+        ]
+    },
+    {
+        "id": "sched_expire_reply_if_run_from_the_admin_api_b",
+        "z": "tab_scheduled",
+        "x": 780,
+        "y": 180,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sched_expire_reply_if_run_from_the_admin_api",
+        "z": "tab_scheduled",
+        "x": 570,
+        "y": 130,
+        "name": "Reply if run from the admin API",
+        "type": "function",
+        "func": "// msg.res exists only when triggered through POST /api/admin/jobs/close-expired\nreturn msg.res ? [null, msg] : [msg, null];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "sched_expire_log_result"
+            ],
+            [
+                "sched_expire_reply_if_run_from_the_admin_api_b"
+            ]
+        ]
+    },
+    {
+        "id": "sched_expire_log_result",
+        "z": "tab_scheduled",
+        "x": 780,
+        "y": 130,
+        "name": "Log result",
+        "type": "debug",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto"
+    },
+    {
+        "id": "sched_expire_http_in",
+        "type": "http in",
+        "z": "tab_scheduled",
+        "name": "POST /api/admin/jobs/close-expired",
+        "url": "/api/admin/jobs/close-expired",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 150,
+        "y": 250,
+        "wires": [
+            [
+                "sched_expire_http_auth"
+            ]
+        ]
+    },
+    {
+        "id": "sched_expire_http_auth",
+        "type": "subflow:sf_auth_check",
+        "z": "tab_scheduled",
+        "name": "auth-check (admin)",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "x": 360,
+        "y": 250,
+        "wires": [
+            [
+                "sched_expire_close_expired_jobs_transaction"
+            ]
+        ]
     }
 ]

@@ -3,6 +3,19 @@ import { Routes } from '@angular/router';
 import { ShopTabsPage } from './shop-tabs.page';
 
 export const SHOP_ROUTES: Routes = [
+  // Full-screen pages, listed before the tabs so 'jobs/...' is not swallowed by the 'jobs' tab
+  {
+    path: 'jobs/new',
+    loadComponent: () => import('./pages/job-form/job-form.page').then((m) => m.JobFormPage),
+  },
+  {
+    path: 'jobs/:id/edit',
+    loadComponent: () => import('./pages/job-form/job-form.page').then((m) => m.JobFormPage),
+  },
+  {
+    path: 'jobs/:id',
+    loadComponent: () => import('./pages/job-detail/shop-job-detail.page').then((m) => m.ShopJobDetailPage),
+  },
   {
     path: '',
     component: ShopTabsPage,

@@ -1,0 +1,38 @@
+.job-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+
+  h3 {
+    margin: 8px 0 -4px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.locked-note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.picker-field {
+  cursor: pointer;
+
+  ion-icon {
+    color: var(--ion-color-medium);
+  }
+}
