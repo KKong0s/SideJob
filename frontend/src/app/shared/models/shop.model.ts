@@ -1,3 +1,5 @@
+import { Rating } from './review.model';
+
 export type VerifyStatus = 'unsubmitted' | 'pending' | 'verified' | 'rejected';
 
 /** Shop as seen by its owner or an admin (includes private contact details). */
@@ -20,6 +22,7 @@ export interface Shop {
   verifySubmittedAt: string | null;
   verifiedAt: string | null;
   createdAt: string;
+  rating: Rating;
 }
 
 export const VERIFY_STATUS_LABEL: Record<VerifyStatus, string> = {

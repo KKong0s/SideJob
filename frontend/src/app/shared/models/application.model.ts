@@ -1,4 +1,5 @@
 import { JobStatus } from './job.model';
+import { Rating, ReviewSummary } from './review.model';
 import { PublicJob } from './search.model';
 
 export type ApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed';
@@ -17,6 +18,13 @@ interface ApplicationBase {
   cancelledAt: string | null;
   completedAt: string | null;
   contact: Contact | null;
+  /** completedAt + 14 days */
+  reviewDeadline: string | null;
+  /** Completed and still inside the 14-day review window */
+  reviewOpen: boolean;
+  /** Detail endpoints only */
+  myReview?: ReviewSummary | null;
+  theirReview?: ReviewSummary | null;
 }
 
 /** Seeker's own application */
@@ -34,6 +42,7 @@ export interface Applicant extends ApplicationBase {
     avatarPath: string | null;
     skills: string | null;
     bio?: string | null;
+    rating: Rating;
   };
 }
 

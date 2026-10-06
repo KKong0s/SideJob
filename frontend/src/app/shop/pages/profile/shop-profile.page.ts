@@ -37,6 +37,9 @@ import { environment } from '../../../../environments/environment';
 import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { LogoutButtonComponent } from '../../../shared/components/logout-button/logout-button.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
+import { ReviewListComponent } from '../../../shared/components/review-list/review-list.component';
+import { StarsComponent } from '../../../shared/components/stars/stars.component';
+import { ReviewService } from '../../../shared/services/review.service';
 import { Shop, VERIFY_STATUS_COLOR, VERIFY_STATUS_LABEL } from '../../../shared/models/shop.model';
 import { ShopProfileFormComponent } from '../../../shared/pages/onboarding/shop-profile-form.component';
 import { AuthService } from '../../../shared/services/auth.service';
@@ -74,6 +77,8 @@ import { DOCUMENT_TYPES, IMAGE_TYPES, checkUpload, takeFile } from '../../../sha
     LogoutButtonComponent,
     PageStateComponent,
     ShopProfileFormComponent,
+    ReviewListComponent,
+    StarsComponent,
   ],
 })
 export class ShopProfilePage {
@@ -81,6 +86,8 @@ export class ShopProfilePage {
   private readonly auth = inject(AuthService);
   private readonly toasts = inject(ToastController);
   private readonly geo = inject(GeoService);
+  private readonly reviews = inject(ReviewService);
+  readonly fetchReviews = (page: number, ctx?: Parameters<ReviewService['myShopReviews']>[1]) => this.reviews.myShopReviews(page, ctx);
 
   readonly shop = new Loader((ctx) => this.shops.getProfile(ctx));
   readonly editing = signal(false);

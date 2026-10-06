@@ -1,4 +1,5 @@
 import { Job, WageUnit, Weekday } from './job.model';
+import { Rating } from './review.model';
 
 /** Job as seekers see it (search, saved jobs, detail). Never contains shop phone / LINE. */
 export interface PublicJob extends Job {
@@ -14,6 +15,7 @@ export interface PublicJob extends Job {
     provinceId?: number;
     provinceName?: string;
     districtName?: string;
+    rating?: Rating;
   };
 }
 
@@ -58,6 +60,7 @@ export interface SeekerProfile {
   skills: string | null;
   bio: string | null;
   avatarPath: string | null;
+  rating: Rating;
   areas: SeekerArea[];
 }
 

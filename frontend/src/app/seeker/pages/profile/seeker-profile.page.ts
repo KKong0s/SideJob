@@ -28,10 +28,13 @@ import { environment } from '../../../../environments/environment';
 import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { LogoutButtonComponent } from '../../../shared/components/logout-button/logout-button.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
+import { ReviewListComponent } from '../../../shared/components/review-list/review-list.component';
+import { StarsComponent } from '../../../shared/components/stars/stars.component';
 import { SeekerArea } from '../../../shared/models/search.model';
 import { SeekerProfileFormComponent } from '../../../shared/pages/onboarding/seeker-profile-form.component';
 import { AuthService } from '../../../shared/services/auth.service';
 import { GeoService } from '../../../shared/services/geo.service';
+import { ReviewService } from '../../../shared/services/review.service';
 import { SeekerService } from '../../../shared/services/seeker.service';
 import { ageFrom, thaiDate } from '../../../shared/utils/format';
 import { Loader } from '../../../shared/utils/loader';
@@ -67,6 +70,7 @@ import { Loader } from '../../../shared/utils/loader';
               </ion-avatar>
               <h2>{{ p.fullName }}</h2>
               <p>{{ auth.user()?.email }}</p>
+              <app-stars [value]="p.rating.average" [count]="p.rating.count"></app-stars>
               <ion-button size="small" fill="outline" (click)="startEdit()">
                 <ion-icon slot="start" name="create-outline"></ion-icon>แก้ไขโปรไฟล์
               </ion-button>
@@ -107,6 +111,13 @@ import { Loader } from '../../../shared/utils/loader';
                   </ion-item>
                 </ion-list>
                 <ion-note>ร้านจะเห็นเบอร์โทรและ LINE ID หลังรับคุณเข้าทำงานเท่านั้น</ion-note>
+              </ion-card-content>
+            </ion-card>
+
+            <ion-card>
+              <ion-card-header><ion-card-title>รีวิวจากร้าน</ion-card-title></ion-card-header>
+              <ion-card-content class="no-pad">
+                <app-review-list [fetch]="fetchReviews"></app-review-list>
               </ion-card-content>
             </ion-card>
           }
@@ -150,6 +161,9 @@ import { Loader } from '../../../shared/utils/loader';
     .pre {
       white-space: pre-line;
     }
+    .no-pad {
+      padding: 0;
+    }
   `,
   imports: [
     BellButtonComponent,
@@ -175,13 +189,18 @@ import { Loader } from '../../../shared/utils/loader';
     LogoutButtonComponent,
     PageStateComponent,
     SeekerProfileFormComponent,
+    ReviewListComponent,
+    StarsComponent,
   ],
 })
 export class SeekerProfilePage {
   private readonly seeker = inject(SeekerService);
   private readonly geo = inject(GeoService);
   private readonly toasts = inject(ToastController);
+  private readonly reviews = inject(ReviewService);
   readonly auth = inject(AuthService);
+
+  readonly fetchReviews = (page: number, ctx?: Parameters<ReviewService['mySeekerReviews']>[1]) => this.reviews.mySeekerReviews(page, ctx);
 
   readonly profile = new Loader((ctx) => this.seeker.profile(ctx));
   readonly editing = signal(false);

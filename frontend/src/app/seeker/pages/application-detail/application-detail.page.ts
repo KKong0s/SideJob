@@ -23,10 +23,13 @@ import {
   ToastController,
 } from '@ionic/angular';
 
+import { ApplicationReviewsComponent } from '../../../shared/components/application-reviews/application-reviews.component';
 import { ContactButtonsComponent } from '../../../shared/components/contact-buttons/contact-buttons.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { APPLICATION_STATUS_COLOR, APPLICATION_STATUS_LABEL, MyApplication } from '../../../shared/models/application.model';
 import { daysText, locationText, timeText, wageText } from '../../../shared/models/job.model';
+import { ReviewInput } from '../../../shared/models/review.model';
+import { ReviewService } from '../../../shared/services/review.service';
 import { SeekerService } from '../../../shared/services/seeker.service';
 import { thaiDateTime } from '../../../shared/utils/format';
 import { Loader } from '../../../shared/utils/loader';
@@ -93,6 +96,8 @@ import { Loader } from '../../../shared/utils/loader';
             }
           </ion-list>
 
+          <app-application-reviews [app]="a" otherName="ร้าน" [send]="sendReview" (done)="reviewed()"></app-application-reviews>
+
           @if (a.status === 'pending' || a.status === 'accepted') {
             <div class="ion-padding">
               <ion-button expand="block" fill="outline" color="danger" (click)="cancel(a)">ยกเลิกใบสมัคร</ion-button>
@@ -140,6 +145,7 @@ import { Loader } from '../../../shared/utils/loader';
     IonLabel,
     IonNote,
     IonButton,
+    ApplicationReviewsComponent,
     ContactButtonsComponent,
     PageStateComponent,
   ],
@@ -148,6 +154,7 @@ export class ApplicationDetailPage {
   private readonly seeker = inject(SeekerService);
   private readonly alerts = inject(AlertController);
   private readonly toasts = inject(ToastController);
+  private readonly reviews = inject(ReviewService);
 
   readonly id = input.required<string>();
   readonly appId = computed(() => Number(this.id()));
@@ -163,6 +170,14 @@ export class ApplicationDetailPage {
 
   ionViewWillEnter(): void {
     void this.app.load();
+  }
+
+  readonly sendReview = (review: ReviewInput) => this.reviews.reviewShop(this.appId(), review);
+
+  async reviewed(): Promise<void> {
+    await this.app.load();
+    const t = await this.toasts.create({ message: 'ส่งรีวิวแล้ว ขอบคุณครับ', color: 'success', duration: 2000, position: 'top' });
+    await t.present();
   }
 
   async cancel(a: MyApplication): Promise<void> {

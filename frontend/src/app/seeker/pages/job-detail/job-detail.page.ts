@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   IonBackButton,
   IonBadge,
@@ -23,14 +23,17 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { bookmark, bookmarkOutline, calendarOutline, cashOutline, locationOutline, personOutline, timeOutline } from 'ionicons/icons';
+import { bookmark, bookmarkOutline, calendarOutline, cashOutline, flagOutline, locationOutline, personOutline, timeOutline } from 'ionicons/icons';
 
 import { environment } from '../../../../environments/environment';
 import { JobGalleryComponent } from '../../../shared/components/job-gallery/job-gallery.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
+import { openReportDialog } from '../../../shared/components/report-dialog';
+import { StarsComponent } from '../../../shared/components/stars/stars.component';
 import { daysText, locationText, timeText, wageText } from '../../../shared/models/job.model';
 import { JobStatusForSeeker, PublicJob } from '../../../shared/models/search.model';
 import { JobsService } from '../../../shared/services/jobs.service';
+import { ReviewService } from '../../../shared/services/review.service';
 import { SeekerService } from '../../../shared/services/seeker.service';
 import { silentErrors } from '../../../shared/utils/api-error';
 import { thaiDate, timeAgo } from '../../../shared/utils/format';
@@ -60,8 +63,10 @@ import { Loader } from '../../../shared/utils/loader';
     IonLabel,
     IonFooter,
     IonSpinner,
+    RouterLink,
     JobGalleryComponent,
     PageStateComponent,
+    StarsComponent,
   ],
 })
 export class JobDetailPage {
@@ -70,6 +75,7 @@ export class JobDetailPage {
   private readonly toasts = inject(ToastController);
   private readonly alerts = inject(AlertController);
   private readonly router = inject(Router);
+  private readonly reviews = inject(ReviewService);
 
   readonly id = input.required<string>();
   readonly jobId = computed(() => Number(this.id()));
@@ -95,7 +101,7 @@ export class JobDetailPage {
   readonly timeAgo = timeAgo;
 
   constructor() {
-    addIcons({ bookmark, bookmarkOutline, calendarOutline, cashOutline, locationOutline, personOutline, timeOutline });
+    addIcons({ bookmark, bookmarkOutline, calendarOutline, cashOutline, flagOutline, locationOutline, personOutline, timeOutline });
     registerCategoryIcons();
   }
 
@@ -166,6 +172,10 @@ export class JobDetailPage {
   openApplication(): void {
     const app = this.status()?.application;
     if (app) void this.router.navigate(['/seeker/applications', app.id]);
+  }
+
+  report(): void {
+    void openReportDialog(this.alerts, this.toasts, this.reviews, 'job', this.jobId(), 'รายงานประกาศนี้');
   }
 
   shopLocation(job: PublicJob): string {

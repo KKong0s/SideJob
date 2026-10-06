@@ -25,11 +25,16 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, closeCircleOutline, personCircleOutline } from 'ionicons/icons';
+import { checkmarkCircleOutline, checkmarkDoneOutline, closeCircleOutline, personCircleOutline } from 'ionicons/icons';
 
 import { environment } from '../../../../environments/environment';
+import { ApplicationReviewsComponent } from '../../../shared/components/application-reviews/application-reviews.component';
 import { ContactButtonsComponent } from '../../../shared/components/contact-buttons/contact-buttons.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
+import { ReviewListComponent } from '../../../shared/components/review-list/review-list.component';
+import { StarsComponent } from '../../../shared/components/stars/stars.component';
+import { ReviewInput } from '../../../shared/models/review.model';
+import { ReviewService } from '../../../shared/services/review.service';
 import { APPLICATION_STATUS_COLOR, APPLICATION_STATUS_LABEL } from '../../../shared/models/application.model';
 import { ShopService } from '../../../shared/services/shop.service';
 import { thaiDateTime } from '../../../shared/utils/format';
@@ -60,6 +65,7 @@ import { Loader } from '../../../shared/utils/loader';
             </ion-avatar>
             <h2>{{ a.seeker.fullName }}</h2>
             @if (a.seeker.age) { <p>อายุ {{ a.seeker.age }} ปี</p> }
+            <p><app-stars [value]="a.seeker.rating.average" [count]="a.seeker.rating.count"></app-stars></p>
             <ion-badge [color]="statusColor[a.status]">{{ statusLabel[a.status] }}</ion-badge>
           </div>
 
@@ -84,6 +90,24 @@ import { Loader } from '../../../shared/utils/loader';
               <ion-label class="ion-text-wrap"><p>แนะนำตัว</p><h3 class="pre">{{ a.seeker.bio || '-' }}</h3></ion-label>
             </ion-item>
           </ion-list>
+
+          @if (a.status === 'accepted') {
+            <div class="ion-padding">
+              <ion-button expand="block" [disabled]="busy()" (click)="complete()">
+                <ion-icon slot="start" name="checkmark-done-outline"></ion-icon>ยืนยันว่างานเสร็จแล้ว
+              </ion-button>
+              <ion-note>หลังยืนยัน ทั้งสองฝ่ายรีวิวกันได้ภายใน 14 วัน</ion-note>
+            </div>
+          }
+
+          <app-application-reviews [app]="a" otherName="ผู้สมัคร" [send]="sendReview" (done)="reviewed()"></app-application-reviews>
+
+          @if (a.seeker.rating.count) {
+            <ion-card>
+              <ion-card-header><ion-card-title>รีวิวที่ผู้สมัครได้รับ</ion-card-title></ion-card-header>
+              <ion-card-content class="no-pad"><app-review-list [fetch]="fetchSeekerReviews"></app-review-list></ion-card-content>
+            </ion-card>
+          }
 
           @if (a.status === 'pending') {
             <ion-note class="ion-padding-horizontal note">เบอร์โทรและ LINE ของผู้สมัครจะแสดงหลังกดรับเข้าทำงาน</ion-note>
@@ -133,6 +157,9 @@ import { Loader } from '../../../shared/utils/loader';
       display: block;
       margin-top: 12px;
     }
+    .no-pad {
+      padding: 0;
+    }
     .actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -162,14 +189,18 @@ import { Loader } from '../../../shared/utils/loader';
     IonLabel,
     IonNote,
     IonButton,
+    ApplicationReviewsComponent,
     ContactButtonsComponent,
     PageStateComponent,
+    ReviewListComponent,
+    StarsComponent,
   ],
 })
 export class ApplicantDetailPage {
   private readonly shops = inject(ShopService);
   private readonly alerts = inject(AlertController);
   private readonly toasts = inject(ToastController);
+  private readonly reviews = inject(ReviewService);
 
   readonly id = input.required<string>();
   readonly appId = computed(() => Number(this.id()));
@@ -182,11 +213,50 @@ export class ApplicantDetailPage {
   readonly thaiDateTime = thaiDateTime;
 
   constructor() {
-    addIcons({ checkmarkCircleOutline, closeCircleOutline, personCircleOutline });
+    addIcons({ checkmarkCircleOutline, checkmarkDoneOutline, closeCircleOutline, personCircleOutline });
   }
 
   ionViewWillEnter(): void {
     void this.app.load();
+  }
+
+  readonly sendReview = (review: ReviewInput) => this.reviews.reviewSeeker(this.appId(), review);
+  readonly fetchSeekerReviews = (page: number, ctx?: Parameters<ReviewService['applicantReviews']>[2]) =>
+    this.reviews.applicantReviews(this.app.value()!.seeker.id, page, ctx);
+
+  async reviewed(): Promise<void> {
+    await this.app.load();
+    await this.toast('ส่งรีวิวแล้ว', 'success');
+  }
+
+  async complete(): Promise<void> {
+    const alert = await this.alerts.create({
+      header: 'ยืนยันว่างานเสร็จแล้ว?',
+      message: 'ผู้สมัครจะได้รับแจ้งเตือน และทั้งสองฝ่ายรีวิวกันได้ภายใน 14 วัน',
+      buttons: [
+        { text: 'ยกเลิก', role: 'cancel' },
+        { text: 'ยืนยัน', handler: () => void this.doComplete() },
+      ],
+    });
+    await alert.present();
+  }
+
+  private async doComplete(): Promise<void> {
+    this.busy.set(true);
+    try {
+      await this.shops.complete(this.appId());
+      await this.app.load();
+      await this.toast('ยืนยันงานเสร็จแล้ว', 'success');
+    } catch {
+      // the interceptor shows the error toast
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private async toast(message: string, color: string): Promise<void> {
+    const t = await this.toasts.create({ message, color, duration: 2000, position: 'top' });
+    await t.present();
   }
 
   async decide(action: 'accept' | 'reject'): Promise<void> {

@@ -9,6 +9,10 @@ export const SEEKER_ROUTES: Routes = [
     loadComponent: () => import('./pages/job-detail/job-detail.page').then((m) => m.JobDetailPage),
   },
   {
+    path: 'shops/:id/reviews',
+    loadComponent: () => import('./pages/shop-reviews/shop-reviews.page').then((m) => m.ShopReviewsPage),
+  },
+  {
     path: 'applications/:id',
     loadComponent: () => import('./pages/application-detail/application-detail.page').then((m) => m.ApplicationDetailPage),
   },

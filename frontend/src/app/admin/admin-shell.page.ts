@@ -16,7 +16,16 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { documentTextOutline, logOutOutline, speedometerOutline, storefrontOutline } from 'ionicons/icons';
+import {
+  briefcaseOutline,
+  documentTextOutline,
+  flagOutline,
+  logOutOutline,
+  peopleOutline,
+  pricetagsOutline,
+  speedometerOutline,
+  storefrontOutline,
+} from 'ionicons/icons';
 
 import { AuthService } from '../shared/services/auth.service';
 
@@ -95,14 +104,17 @@ interface MenuItem {
 export class AdminShellPage {
   readonly auth = inject(AuthService);
 
-  // Users, jobs, reports and categories are added in Phase 7
   readonly menu: MenuItem[] = [
     { url: '/admin/dashboard', label: 'แดชบอร์ด', icon: 'speedometer-outline' },
     { url: '/admin/shops', label: 'ร้านรอยืนยัน', icon: 'storefront-outline' },
+    { url: '/admin/users', label: 'ผู้ใช้', icon: 'people-outline' },
+    { url: '/admin/jobs', label: 'ประกาศ', icon: 'briefcase-outline' },
+    { url: '/admin/reports', label: 'รายงาน', icon: 'flag-outline' },
+    { url: '/admin/categories', label: 'หมวดหมู่', icon: 'pricetags-outline' },
     { url: '/admin/logs', label: 'Audit log', icon: 'document-text-outline' },
   ];
 
   constructor() {
-    addIcons({ speedometerOutline, storefrontOutline, documentTextOutline, logOutOutline });
+    addIcons({ speedometerOutline, storefrontOutline, peopleOutline, briefcaseOutline, flagOutline, pricetagsOutline, documentTextOutline, logOutOutline });
   }
 }

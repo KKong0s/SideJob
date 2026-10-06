@@ -47,6 +47,8 @@ Every error uses the same body:
 | 409 | `IMAGE_LIMIT` | Job already has 5 sample photos |
 | 409 | `JOB_HIDDEN` | Job was hidden by an admin and cannot be edited / renewed |
 | 409 | `RENEW_LIMIT` | Job already expires 60 days ahead |
+| 409 | `REVIEW_NOT_ALLOWED`, `REVIEW_WINDOW_CLOSED`, `ALREADY_REVIEWED` | Review rules (completed, 14 days, once per side) |
+| 409 | `ALREADY_REPORTED` | Same user reported the same target before |
 | 409 | `INVALID_STATE` | Action not allowed in the current status (e.g. verifying a shop that is not pending) |
 | 413 | `FILE_TOO_LARGE` | Upload over 5 MB |
 | 415 | `UNSUPPORTED_FILE_TYPE` | Upload type not allowed (images: JPG / PNG, verification documents: PDF / JPG / PNG; checked by file signature) |
@@ -583,6 +585,62 @@ Search results, saved jobs and the detail endpoint return the job fields above (
 - **Response 200:** `{ "total": 85, "provinces": { "1": 40, "38": 12 }, "districts": { "1001": 5, "5001": 7 } }` (areas without jobs are left out)
 
 
+## Reviews and reports (Phase 7)
+
+### Rules
+
+- A review belongs to one application. Each side reviews **once**, only when the application is `completed`
+  and within **14 days** of `completedAt`. Seekers review the shop (stored against the shop owner's user id),
+  shops review the seeker.
+- `rating` 1–5 (integer), `comment` optional, max 1000 characters.
+- Hidden reviews (by an admin) are left out of every list and of the averages.
+- `rating` objects everywhere: `{ "average": 4.3, "count": 12 }` (`average: null` when there are no visible reviews).
+  Shown on the shop object (`GET /api/shop/profile`, admin shop detail), the public job detail (`job.shop.rating`),
+  the seeker profile (`GET /api/seeker/profile`) and every applicant (`seeker.rating`).
+- Application objects also carry `reviewDeadline` (completedAt + 14 days) and `reviewOpen`; the detail endpoints
+  (`GET /api/seeker/applications/:id`, `GET /api/shop/applications/:id`) add `myReview` and `theirReview`
+  (`{ rating, comment, createdAt }` or `null`).
+
+### Review list item
+
+```json
+{ "id": 5, "rating": 4, "comment": "ร้านใจดี", "createdAt": "2026-10-06 18:00:00", "reviewerName": "สมชาย ใจดี", "jobTitle": "พนักงานเสิร์ฟ" }
+```
+
+### `POST /api/shop/applications/:id/complete`
+
+- **Role:** shop (own job). `accepted` → `completed`, starts the 14-day review window, notifies the seeker (`application.completed`). One transaction.
+- **Response 200:** `{ "id": 7, "status": "completed" }`
+- **Errors:** 404, 409 `INVALID_STATE`
+
+### `POST /api/seeker/applications/:id/review` · `POST /api/shop/applications/:id/review`
+
+- **Role:** seeker (own application) / shop (own job)
+- **Request:** `{ "rating": 4, "comment": "..." }`
+- Notifies the other side (`review.received`). One transaction.
+- **Response 201:** `{ "review": { "rating": 4, "comment": "..." } }`
+- **Errors:** 400 `VALIDATION_ERROR`, 404, 409 `REVIEW_NOT_ALLOWED` (not completed) / `REVIEW_WINDOW_CLOSED` (after 14 days) / `ALREADY_REVIEWED`
+
+### `GET /api/jobs/shops/:shopId/reviews`
+
+- **Role:** public. Reviews received by a verified shop. **Query:** `page`, `pageSize`. **Response 200:** page of review items.
+
+### `GET /api/seeker/reviews` · `GET /api/shop/reviews`
+
+- Reviews the caller received. **Response 200:** page of review items.
+
+### `GET /api/shop/seekers/:userId/reviews`
+
+- **Role:** shop. Reviews a seeker received; only for seekers who applied to one of the shop's jobs (otherwise 404).
+
+### `POST /api/reports`
+
+- **Role:** seeker, shop
+- **Request:** `{ "targetType": "job" | "review", "targetId": 15, "reason": "ประกาศหลอกลวง" }` (reason 1–500)
+- The target must exist and not be hidden. One report per user per target.
+- **Response 201:** `{ "report": { "id": 3, "status": "open" } }`
+- **Errors:** 400, 404, 409 `ALREADY_REPORTED`
+
 ## Notifications
 
 All endpoints need a logged-in user (any role) and only touch the caller's own rows (`WHERE user_id = <JWT user>`).
@@ -695,4 +753,84 @@ same database transaction: if the log cannot be written the action is rolled bac
 
 - **Response 200:** `{ "admins": [{ "id": 1, "email": "admin@sidejob.local" }], "actions": ["shop.reject", "shop.verify"], "targetTypes": ["shop"] }`
 
-Log actions: `shop.verify`, `shop.reject` (Phase 2); `user.suspend`, `user.unsuspend`, `job.hide`, `report.resolve`, `report.dismiss`, `review.hide` (Phase 7).
+Log actions: `shop.verify`, `shop.reject`, `user.suspend`, `user.unsuspend`, `job.hide`, `job.unhide`, `report.resolve`, `report.dismiss`, `review.hide`, `category.create`, `category.update`.
+
+### `GET /api/admin/users`
+
+- **Query:** `role` (`seeker` | `shop` | `admin` | `none`), `status` (`active` | `suspended`), `q` (email, name or shop name), `page`, `pageSize`
+- **Response 200:** page of `{ "id", "email", "role", "status", "profileCompleted", "hasGoogle", "displayName", "shopId", "createdAt", "lastLoginAt" }` (no password hash)
+
+### `POST /api/admin/users/:id/suspend` · `POST /api/admin/users/:id/unsuspend`
+
+- **Request:** `{ "reason": "..." }` — **required for suspend**, optional for unsuspend
+- Admin accounts cannot be suspended (403). A suspended user's token stops working immediately (auth-check reads
+  the status on every request) and their shop's jobs drop out of search. Logs `user.suspend` / `user.unsuspend`.
+- **Response 200:** `{ "id": 12, "status": "suspended" }`
+- **Errors:** 400, 403 `FORBIDDEN`, 404, 409 `INVALID_STATE`
+
+### `GET /api/admin/jobs`
+
+- **Query:** `status` (`open` | `closed` | `hidden`), `reported=1` (has open reports), `q`, `page`, `pageSize`
+- **Response 200:** page of public job objects (no description) + `applicantCount`, `openReports`
+
+### `GET /api/admin/jobs/:id`
+
+- **Response 200:** `{ "job": <job + shop + images + "openReports": 0, "applicationCounts": { "pending": 1, "completed": 2 }> }` (any status, including hidden)
+
+### `GET /api/admin/jobs/:id/applications`
+
+- Read-only list of applicants: `{ "id", "status", "appliedAt", "seeker": { "id", "fullName", "email" } }` (no phone / LINE)
+
+### `POST /api/admin/jobs/:id/hide`
+
+- **Request:** `{ "reason": "..." }` (optional, shown to the shop in the notification)
+- Sets `hidden`, rejects pending applications (seekers notified), resolves the job's open reports, notifies the shop
+  (`job.hidden`), logs `job.hide`. One transaction.
+- **Response 200:** `{ "id": 15, "status": "hidden", "rejectedApplications": 1 }`
+- **Errors:** 404, 409 `INVALID_STATE` (already hidden)
+
+### `POST /api/admin/jobs/:id/unhide`
+
+- `hidden` → `closed` (the shop can renew it). Logs `job.unhide`.
+
+### `GET /api/admin/reports`
+
+- **Query:** `status` (`open` default | `resolved` | `dismissed` | `all`), `targetType` (`job` | `review`), `page`, `pageSize`. Open reports: oldest first.
+- **Response 200:** page of
+
+  ```json
+  {
+    "id": 3, "targetType": "job", "targetId": 15, "reason": "...", "status": "open",
+    "createdAt": "...", "resolvedAt": null, "reporterEmail": "...", "resolverEmail": null,
+    "target": { "title": "...", "status": "open", "shopName": "..." }
+  }
+  ```
+
+  For reviews `target` is `{ "rating", "comment", "isHidden", "author" }`; `null` if the target no longer exists.
+
+### `POST /api/admin/reports/:id/resolve`
+
+- **Request:** `{ "hideTarget": true, "reason": "..." }`
+- With `hideTarget` the job is hidden (same as `/hide`) or the review is hidden (`review.hide`), and all open reports
+  of that target are resolved. Logs `report.resolve`. One transaction.
+- **Errors:** 404, 409 `INVALID_STATE` (not open)
+
+### `POST /api/admin/reports/:id/dismiss`
+
+- **Request:** `{ "reason": "..." }` (optional). Logs `report.dismiss`.
+
+### `POST /api/admin/reviews/:id/hide`
+
+- **Request:** `{ "reason": "..." }` (optional). Hides the review, resolves its open reports, logs `review.hide`.
+
+### `GET /api/admin/categories`
+
+- **Response 200:** `{ "items": [{ "id": 1, "name": "...", "icon": "restaurant-outline", "sortOrder": 10, "isActive": true, "jobCount": 12 }] }` (including inactive)
+
+### `POST /api/admin/categories` · `PUT /api/admin/categories/:id`
+
+- **Request:** `{ "name": "...", "icon": "cafe-outline", "sortOrder": 10, "isActive": true }` (name 1–100, unique; icon = ionicons name)
+- There is no delete (jobs reference categories): deactivate instead. Inactive categories disappear from
+  `GET /api/jobs/categories` and cannot be chosen for new jobs. Logs `category.create` / `category.update`.
+- **Response:** 201 / 200 `{ "category": { ... } }`
+- **Errors:** 400, 404, 409 `CONFLICT` (duplicate name)

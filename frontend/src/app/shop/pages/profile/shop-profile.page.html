@@ -23,6 +23,7 @@
         <div class="shop-title">
           <h2>{{ s.name }}</h2>
           <ion-badge [color]="statusColor[s.verifyStatus]">{{ statusLabel[s.verifyStatus] }}</ion-badge>
+          <div><app-stars [value]="s.rating.average" [count]="s.rating.count"></app-stars></div>
           <div>
             <ion-button size="small" fill="clear" [disabled]="uploadingImage()" (click)="imageInput.click()">
               @if (uploadingImage()) {
@@ -128,6 +129,11 @@
             <ion-note>ผู้หางานจะเห็นเบอร์โทรและ LINE หลังร้านรับเข้าทำงานเท่านั้น</ion-note>
           }
         </ion-card-content>
+      </ion-card>
+
+      <ion-card>
+        <ion-card-header><ion-card-title>รีวิวจากผู้หางาน</ion-card-title></ion-card-header>
+        <ion-card-content class="no-pad"><app-review-list [fetch]="fetchReviews"></app-review-list></ion-card-content>
       </ion-card>
     }
   </app-page-state>

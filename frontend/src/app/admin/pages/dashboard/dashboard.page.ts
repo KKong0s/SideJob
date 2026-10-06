@@ -46,7 +46,7 @@ interface Tile {
             <ion-row>
               @for (tile of tiles; track tile.key) {
                 <ion-col size="6" size-md="4">
-                  <ion-card [routerLink]="tile.link" [button]="!!tile.link" [class.highlight]="tile.key === 'pendingShops' && s.pendingShops > 0">
+                  <ion-card [routerLink]="tile.link" [button]="!!tile.link" [class.highlight]="(tile.key === 'pendingShops' || tile.key === 'openReports') && s[tile.key] > 0">
                     <ion-card-content>
                       <div class="value">{{ s[tile.key].toLocaleString('th-TH') }}</div>
                       <div class="label">{{ tile.label }}</div>
@@ -98,10 +98,10 @@ export class AdminDashboardPage {
   readonly tiles: Tile[] = [
     { key: 'pendingShops', label: 'ร้านรอยืนยัน', link: '/admin/shops' },
     { key: 'shops', label: 'ร้านค้าทั้งหมด' },
-    { key: 'seekers', label: 'ผู้หางาน' },
-    { key: 'openJobs', label: 'ประกาศที่เปิดรับ' },
+    { key: 'seekers', label: 'ผู้หางาน', link: '/admin/users' },
+    { key: 'openJobs', label: 'ประกาศที่เปิดรับ', link: '/admin/jobs' },
     { key: 'applications', label: 'ใบสมัครทั้งหมด' },
-    { key: 'openReports', label: 'รายงานที่รอจัดการ' },
+    { key: 'openReports', label: 'รายงานที่รอจัดการ', link: '/admin/reports' },
   ];
 
   ionViewWillEnter(): void {

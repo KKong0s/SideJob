@@ -97,6 +97,10 @@ export class ShopService {
     await firstValueFrom(this.http.post(`${this.api}/applications/${id}/accept`, {}));
   }
 
+  async complete(id: number): Promise<void> {
+    await firstValueFrom(this.http.post(`${this.api}/applications/${id}/complete`, {}));
+  }
+
   async reject(id: number): Promise<void> {
     await firstValueFrom(this.http.post(`${this.api}/applications/${id}/reject`, {}));
   }

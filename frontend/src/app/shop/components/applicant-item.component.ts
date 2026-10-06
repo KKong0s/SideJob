@@ -4,6 +4,7 @@ import { addIcons } from 'ionicons';
 import { personCircleOutline } from 'ionicons/icons';
 
 import { environment } from '../../../environments/environment';
+import { StarsComponent } from '../../shared/components/stars/stars.component';
 import { APPLICATION_STATUS_COLOR, APPLICATION_STATUS_LABEL, Applicant } from '../../shared/models/application.model';
 import { timeAgo } from '../../shared/utils/format';
 
@@ -22,6 +23,9 @@ import { timeAgo } from '../../shared/utils/format';
       <ion-label>
         <h3>{{ applicant().seeker.fullName }} @if (applicant().seeker.age) { <span class="age">· {{ applicant().seeker.age }} ปี</span> }</h3>
         <p>{{ applicant().job.title }}</p>
+        @if (applicant().seeker.rating.count) {
+          <p><app-stars [value]="applicant().seeker.rating.average" [count]="applicant().seeker.rating.count"></app-stars></p>
+        }
         @if (applicant().seeker.skills) {
           <p class="skills">{{ applicant().seeker.skills }}</p>
         }
@@ -55,7 +59,7 @@ import { timeAgo } from '../../shared/utils/format';
       font-size: 0.75rem;
     }
   `,
-  imports: [IonItem, IonAvatar, IonIcon, IonLabel, IonBadge, IonNote],
+  imports: [IonItem, IonAvatar, IonIcon, IonLabel, IonBadge, IonNote, StarsComponent],
 })
 export class ApplicantItemComponent {
   readonly applicant = input.required<Applicant>();

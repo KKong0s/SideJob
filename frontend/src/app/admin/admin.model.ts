@@ -1,3 +1,5 @@
+import { ApplicationStatus } from '../shared/models/application.model';
+import { PublicJob } from '../shared/models/search.model';
 import { Shop, VerifyStatus } from '../shared/models/shop.model';
 
 export interface AdminStats {
@@ -55,6 +57,8 @@ export const ACTION_LABEL: Record<string, string> = {
   'report.resolve': 'จัดการรายงาน',
   'report.dismiss': 'ยกเลิกรายงาน',
   'review.hide': 'ซ่อนรีวิว',
+  'category.create': 'เพิ่มหมวดหมู่',
+  'category.update': 'แก้ไขหมวดหมู่',
 };
 
 export const TARGET_LABEL: Record<string, string> = {
@@ -65,3 +69,60 @@ export const TARGET_LABEL: Record<string, string> = {
   review: 'รีวิว',
   category: 'หมวดหมู่',
 };
+
+export interface AdminUserRow {
+  id: number;
+  email: string;
+  role: 'seeker' | 'shop' | 'admin' | null;
+  status: 'active' | 'suspended';
+  profileCompleted: boolean;
+  hasGoogle: boolean;
+  displayName: string | null;
+  shopId: number | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface AdminJobRow extends Omit<PublicJob, 'acceptingApplications'> {
+  applicantCount: number;
+  openReports: number;
+}
+
+export interface AdminJobDetail extends Omit<PublicJob, 'acceptingApplications'> {
+  openReports: number;
+  applicationCounts: Partial<Record<string, number>>;
+}
+
+export interface AdminJobApplicant {
+  id: number;
+  status: ApplicationStatus;
+  appliedAt: string;
+  seeker: { id: number; fullName: string; email: string };
+}
+
+export interface AdminReport {
+  id: number;
+  targetType: 'job' | 'review';
+  targetId: number;
+  reason: string;
+  status: 'open' | 'resolved' | 'dismissed';
+  createdAt: string;
+  resolvedAt: string | null;
+  reporterEmail: string;
+  resolverEmail: string | null;
+  target:
+    | { title: string; status: string; shopName: string }
+    | { rating: number; comment: string | null; isHidden: boolean; author: string }
+    | null;
+}
+
+export interface AdminCategory {
+  id: number;
+  name: string;
+  icon: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  jobCount?: number;
+}
+
+export const ROLE_LABEL: Record<string, string> = { seeker: 'ผู้หางาน', shop: 'ร้านค้า', admin: 'แอดมิน' };

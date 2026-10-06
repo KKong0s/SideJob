@@ -69,5 +69,6 @@ bash tests/api/jobs.sh          # Phase 3: โพสต์ / แก้ไข / �
 bash tests/api/search.sh        # Phase 4: ค้นหา / ตัวกรอง / pagination / บันทึกงาน
 bash tests/api/applications.sh  # Phase 5: สมัคร / ยกเลิก / รับ / ปฏิเสธ / ช่องทางติดต่อ
 bash tests/api/notifications.sh # Phase 6: แจ้งเตือน
+bash tests/api/phase7.sh        # Phase 7: งานเสร็จ / รีวิว / รายงาน / แอดมิน (ผู้ใช้ ประกาศ รายงาน หมวดหมู่)
 cd frontend && npx ng test --watch=false && npx ng lint
 ```

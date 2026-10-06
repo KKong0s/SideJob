@@ -4,6 +4,7 @@
     <ion-title>รายละเอียดงาน</ion-title>
     @if (status(); as s) {
       <ion-buttons slot="end">
+        <ion-button (click)="report()" aria-label="รายงานประกาศนี้"><ion-icon slot="icon-only" name="flag-outline"></ion-icon></ion-button>
         <ion-button (click)="toggleSave()" [disabled]="savingBookmark()" [attr.aria-label]="s.saved ? 'นำออกจากงานที่บันทึก' : 'บันทึกงาน'">
           <ion-icon slot="icon-only" [name]="s.saved ? 'bookmark' : 'bookmark-outline'"></ion-icon>
         </ion-button>
@@ -76,6 +77,11 @@
             </div>
             <div>
               <h3>{{ j.shop.name }}</h3>
+              @if (j.shop.rating; as rating) {
+                <a class="rating-link" [routerLink]="['/seeker/shops', j.shop.id, 'reviews']" [queryParams]="{ name: j.shop.name }">
+                  <app-stars [value]="rating.average" [count]="rating.count"></app-stars>
+                </a>
+              }
               <p>{{ j.shop.address }} {{ shopLocation(j) }}</p>
             </div>
           </div>
