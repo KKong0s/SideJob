@@ -6,7 +6,7 @@ backend/uploads/**
 !backend/uploads/*/
 !backend/uploads/public/.gitkeep
 !backend/uploads/private/.gitkeep
-backend/.config.*.json
+backend/.config.*
 backend/.flows*.backup
 backend/.flows_cred*.backup
 backend/package.json
