@@ -215,6 +215,48 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
 - **Response 200:** `{ "avatarPath": "avatars/3f1c...e9.jpg" }`
 - **Errors:** 400 `VALIDATION_ERROR`, 403 `FORBIDDEN`, 409 `PROFILE_REQUIRED`, 413 `FILE_TOO_LARGE`, 415 `UNSUPPORTED_FILE_TYPE`
 
+### `GET /api/seeker/profile`
+
+- **Role:** seeker
+- **Response 200**
+
+  ```json
+  {
+    "profile": {
+      "fullName": "สมชาย ใจดี", "birthDate": "2000-02-29", "phone": "0812345678", "lineId": "somchai.j",
+      "skills": "ชงกาแฟ", "bio": "...", "avatarPath": "avatars/3f1c...e9.jpg",
+      "areas": [
+        { "provinceId": 38, "districtId": null, "provinceName": "เชียงใหม่", "districtName": null },
+        { "provinceId": 1, "districtId": 1001, "provinceName": "กรุงเทพมหานคร", "districtName": "พระนคร" }
+      ]
+    }
+  }
+  ```
+
+- To change the profile (including areas of interest) call `PUT /api/auth/onboarding/profile` again; it replaces the profile and the area list.
+- **Errors:** 409 `PROFILE_REQUIRED`
+
+### `GET /api/seeker/saved-jobs`
+
+- **Query:** `page`, `pageSize`
+- **Response 200:** page of public job objects + `"savedAt": "2026-10-06 12:00:00"`, most recently saved first.
+  Closed / expired jobs stay in the list with `acceptingApplications: false`; hidden jobs are left out.
+
+### `PUT /api/seeker/saved-jobs/:jobId`
+
+- Saves a job (saving again does nothing). The job must exist and not be hidden.
+- **Response 200:** `{ "saved": true }`
+- **Errors:** 404 `NOT_FOUND`
+
+### `DELETE /api/seeker/saved-jobs/:jobId`
+
+- **Response 200:** `{ "saved": false }` (also when it was not saved)
+
+### `GET /api/seeker/jobs/:id/status`
+
+- The caller's relation to a job, for the job detail page.
+- **Response 200:** `{ "saved": true, "application": { "id": 7, "status": "pending" } }` (`application: null` when not applied)
+
 ## Shop
 
 All `/api/shop/*` endpoints require role **shop** with onboarding completed (`403 PROFILE_INCOMPLETE` otherwise).
@@ -370,7 +412,57 @@ Only `verified` shops can post jobs.
 - **Role:** public (`Cache-Control: public, max-age=300`)
 - **Response 200:** `{ "items": [{ "id": 1, "name": "ร้านอาหาร / คาเฟ่", "icon": "restaurant-outline" }] }` (active only, in display order)
 
-<!-- jobs-public -->
+### Public job object
+
+Search results, saved jobs and the detail endpoint return the job fields above (without the owner-only counts) plus:
+
+```json
+{
+  "acceptingApplications": true,
+  "shop": { "id": 3, "name": "ร้านกาแฟ", "imagePath": "shops/9b2e...41.jpg" }
+}
+```
+
+- Shop phone / LINE are **never** included here (they come only with an accepted application, Phase 5).
+- List endpoints leave out `description`; the detail endpoint adds it and extends `shop` with
+  `description`, `address`, `provinceId`, `provinceName`, `districtName`.
+- A job is shown in search only when: `status = open`, `expiresOn ≥ today`, the work dates are not over (`dates` jobs),
+  the shop is verified and its owner is not suspended.
+
+### `GET /api/jobs`
+
+- **Role:** public
+- **Query** (all optional):
+
+  | Param | Example | Meaning |
+  |---|---|---|
+  | `provinceId` | `38` | Province |
+  | `districtIds` | `5001,5002` | Any of these districts (max 50) |
+  | `categoryId` | `1` | Category |
+  | `wageUnit` | `hour` | `hour` / `day` / `job` |
+  | `wageMin`, `wageMax` | `50`, `100` | Wage range in baht (inclusive) |
+  | `workDays` | `sat,sun` | Works on at least one of these days (`dates` jobs match the weekdays in their range) |
+  | `q` | `กาแฟ` | Text in the job title or shop name |
+  | `page`, `pageSize` | `1`, `20` | Pagination (default 20, max 50) |
+
+- Order: newest first.
+- **Response 200:** page of public job objects (no `description`)
+- **Errors:** 400 `VALIDATION_ERROR` (bad id list / weekday / wage)
+
+### `GET /api/jobs/:id`
+
+- **Role:** public
+- Closed / expired jobs are still returned with `acceptingApplications: false` (for saved jobs and applications).
+  Hidden jobs and jobs of unverified or suspended shops → 404.
+- **Response 200:** `{ "job": <public job object with description and shop details> }`
+- **Errors:** 404 `NOT_FOUND`
+
+### `GET /api/jobs/area-counts`
+
+- **Role:** public (`Cache-Control: public, max-age=60`)
+- Number of jobs visible in search, per province and per district (for the area picker).
+- **Response 200:** `{ "total": 85, "provinces": { "1": 40, "38": 12 }, "districts": { "1001": 5, "5001": 7 } }` (areas without jobs are left out)
+
 
 ## Scheduled
 

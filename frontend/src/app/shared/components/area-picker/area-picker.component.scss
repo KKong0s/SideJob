@@ -1,0 +1,14 @@
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
+
+ion-note.zero {
+  opacity: 0.5;
+}
+
+ion-list-header {
+  font-size: 0.85rem;
+  color: var(--ion-color-medium);
+}

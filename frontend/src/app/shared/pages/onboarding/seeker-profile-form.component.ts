@@ -1,4 +1,4 @@
-import { Component, computed, inject, output, signal } from '@angular/core';
+import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   IonAvatar,
@@ -13,11 +13,13 @@ import {
   ModalController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { addOutline, chevronDown, closeCircle, personCircleOutline } from 'ionicons/icons';
+import { addOutline, closeCircle, personCircleOutline } from 'ionicons/icons';
 
-import { WHOLE_PROVINCE, openGeoPicker } from '../../components/geo-picker/geo-picker.component';
-
+import { environment } from '../../../../environments/environment';
+import { openAreaPicker } from '../../components/area-picker/area-picker.component';
+import { SeekerProfile } from '../../models/search.model';
 import { SessionUser } from '../../models/session.model';
+import { AreaService } from '../../services/area.service';
 import { AuthService } from '../../services/auth.service';
 import { GeoService } from '../../services/geo.service';
 import { toApiError } from '../../utils/api-error';
@@ -31,6 +33,10 @@ interface Area {
   districtId: number | null;
 }
 
+/**
+ * Seeker profile form, used in onboarding and (mode="edit", pre-filled from `initial`) on the profile page.
+ * Both save through PUT /api/auth/onboarding/profile, which replaces the profile and areas.
+ */
 @Component({
   selector: 'app-seeker-profile-form',
   templateUrl: 'seeker-profile-form.component.html',
@@ -48,10 +54,14 @@ interface Area {
     IonTextarea,
   ],
 })
-export class SeekerProfileFormComponent {
+export class SeekerProfileFormComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly modals = inject(ModalController);
+  private readonly area = inject(AreaService);
   readonly geo = inject(GeoService);
+
+  readonly mode = input<'onboarding' | 'edit'>('onboarding');
+  readonly initial = input<SeekerProfile | null>(null);
 
   readonly saved = output<SessionUser>();
 
@@ -66,20 +76,8 @@ export class SeekerProfileFormComponent {
     bio: ['', Validators.maxLength(1000)],
   });
 
-  // Area picker (a full region -> province -> district modal comes in Phase 4)
   readonly areas = signal<Area[]>([]);
-  readonly pickProvince = signal<number | null>(null);
-  readonly pickDistricts = signal<number[]>([]);
   readonly areasTouched = signal(false);
-
-  readonly pickProvinceLabel = computed(() => {
-    const id = this.pickProvince();
-    return id ? this.geo.provinceName(id) : '';
-  });
-  readonly pickDistrictsLabel = computed(() => {
-    const ids = this.pickDistricts().filter((id) => id !== WHOLE_PROVINCE);
-    return ids.length ? ids.map((id) => this.geo.districtName(id)).join(', ') : 'ทั้งจังหวัด';
-  });
 
   readonly avatarFile = signal<File | null>(null);
   readonly avatarPreview = signal<string | null>(null);
@@ -89,40 +87,38 @@ export class SeekerProfileFormComponent {
   readonly error = signal('');
 
   constructor() {
-    addIcons({ addOutline, chevronDown, closeCircle, personCircleOutline });
+    addIcons({ addOutline, closeCircle, personCircleOutline });
   }
 
-  async chooseProvince(): Promise<void> {
-    const current = this.pickProvince();
-    const result = await openGeoPicker(this.modals, { mode: 'province', selected: current ? [current] : [] });
-    if (!result || result[0] === current) return;
-    this.pickProvince.set(result[0]);
-    this.pickDistricts.set([]);
-  }
-
-  async chooseDistricts(): Promise<void> {
-    const result = await openGeoPicker(this.modals, {
-      mode: 'district',
-      provinceId: this.pickProvince(),
-      multiple: true,
-      selected: this.pickDistricts(),
+  ngOnInit(): void {
+    const p = this.initial();
+    if (!p) return;
+    this.form.patchValue({
+      fullName: p.fullName,
+      birthDate: p.birthDate,
+      phone: p.phone ?? '',
+      lineId: p.lineId ?? '',
+      skills: p.skills ?? '',
+      bio: p.bio ?? '',
     });
-    if (result) this.pickDistricts.set(result);
+    this.areas.set(p.areas.map((a) => ({ provinceId: a.provinceId, districtId: a.districtId })));
+    if (p.avatarPath) this.avatarPreview.set(`${environment.uploadsUrl}/${p.avatarPath}`);
   }
 
-  /** Adding a province again replaces what was chosen for it before. */
-  addArea(): void {
-    const provinceId = this.pickProvince();
-    if (!provinceId) return;
-    const districts = this.pickDistricts();
-    const added: Area[] =
-      districts.length === 0 || districts.includes(WHOLE_PROVINCE)
-        ? [{ provinceId, districtId: null }]
-        : districts.map((districtId) => ({ provinceId, districtId }));
-
+  /** Region -> province -> district picker; a province picked again replaces what was chosen for it */
+  async addAreas(): Promise<void> {
+    await this.geo.load();
+    const result = await openAreaPicker(this.modals, {
+      allowWholeCountry: false,
+      counts: await this.area.loadCounts(),
+      confirmText: 'เพิ่มพื้นที่นี้',
+    });
+    if (!result?.provinceId) return;
+    const provinceId = result.provinceId;
+    const added: Area[] = result.districtIds.length
+      ? result.districtIds.map((districtId) => ({ provinceId, districtId }))
+      : [{ provinceId, districtId: null }];
     this.areas.update((list) => [...list.filter((a) => a.provinceId !== provinceId), ...added]);
-    this.pickProvince.set(null);
-    this.pickDistricts.set([]);
     this.areasTouched.set(true);
   }
 
@@ -152,7 +148,7 @@ export class SeekerProfileFormComponent {
       return;
     }
     const old = this.avatarPreview();
-    if (old) URL.revokeObjectURL(old);
+    if (old?.startsWith('blob:')) URL.revokeObjectURL(old);
     this.avatarFile.set(file);
     this.avatarPreview.set(URL.createObjectURL(file));
   }
@@ -180,6 +176,7 @@ export class SeekerProfileFormComponent {
       if (avatar) {
         // The profile is already saved; a failed upload only shows a toast and can be retried later
         user = await this.auth.uploadAvatar(avatar).catch(() => user);
+        this.avatarFile.set(null);
       }
       this.saved.emit(user);
     } catch (err) {

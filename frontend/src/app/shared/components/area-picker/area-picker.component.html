@@ -1,0 +1,111 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      @if (step() !== 'region' && !results()) {
+        <ion-button (click)="back()" aria-label="ย้อนกลับ"><ion-icon slot="icon-only" name="chevron-back"></ion-icon></ion-button>
+      } @else {
+        <ion-button (click)="cancel()">{{ cancelText }}</ion-button>
+      }
+    </ion-buttons>
+    <ion-title>{{ title() }}</ion-title>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar
+      placeholder="พิมพ์ชื่อจังหวัดหรืออำเภอ เช่น เชียงใหม่, กทม"
+      [debounce]="0"
+      [value]="query()"
+      (ionInput)="query.set($event.detail.value ?? '')"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (results(); as r) {
+    <!-- Search results jump straight to the district step -->
+    <ion-list lines="full">
+      @if (r.provinces.length) {
+        <ion-list-header>จังหวัด</ion-list-header>
+      }
+      @for (p of r.provinces; track p.id) {
+        <ion-item button [detail]="true" (click)="openProvince(p)">
+          <ion-label>{{ p.nameTh }}</ion-label>
+          <ion-note slot="end">{{ provinceCount(p.id) }} งาน</ion-note>
+        </ion-item>
+      }
+      @if (r.districts.length) {
+        <ion-list-header>อำเภอ / เขต</ion-list-header>
+      }
+      @for (d of r.districts; track d.id) {
+        <ion-item button [detail]="true" (click)="openDistrictResult(d)">
+          <ion-label>
+            {{ districtPrefix(d.provinceId) }}{{ d.nameTh }}
+            <p>{{ geo.provinceName(d.provinceId) }}</p>
+          </ion-label>
+          <ion-note slot="end">{{ districtCount(d.id) }} งาน</ion-note>
+        </ion-item>
+      }
+      @if (!r.provinces.length && !r.districts.length) {
+        <div class="empty">ไม่พบ "{{ query() }}"</div>
+      }
+    </ion-list>
+  } @else {
+    @switch (step()) {
+      @case ('region') {
+        <ion-list lines="full">
+          @if (allowWholeCountry) {
+            <ion-item button [detail]="false" (click)="wholeCountry()">
+              <ion-icon slot="start" name="globe-outline" aria-hidden="true"></ion-icon>
+              <ion-label><strong>ทุกพื้นที่ทั่วประเทศ</strong></ion-label>
+              @if (counts) { <ion-badge slot="end" color="light">{{ counts.total }}</ion-badge> }
+            </ion-item>
+          }
+          @for (region of regions(); track region.id) {
+            <ion-item button [detail]="true" (click)="openRegion(region.id)">
+              <ion-label>{{ region.nameTh }}</ion-label>
+              @if (counts) { <ion-note slot="end">{{ regionCount(region.id) }} งาน</ion-note> }
+            </ion-item>
+          }
+        </ion-list>
+      }
+      @case ('province') {
+        <ion-list lines="full">
+          @for (p of provincesOfRegion(); track p.id) {
+            <ion-item button [detail]="true" (click)="openProvince(p)">
+              <ion-label>{{ p.nameTh }}</ion-label>
+              @if (counts) { <ion-note slot="end">{{ provinceCount(p.id) }} งาน</ion-note> }
+            </ion-item>
+          }
+        </ion-list>
+      }
+      @case ('district') {
+        <ion-list lines="full">
+          <ion-item button [detail]="false" (click)="wholeProvince()" [attr.aria-pressed]="picked().size === 0">
+            <ion-icon slot="start" [name]="picked().size === 0 ? 'checkmark-circle' : 'ellipse-outline'" color="primary" aria-hidden="true"></ion-icon>
+            <ion-label><strong>ทั้งจังหวัด</strong></ion-label>
+            @if (counts) { <ion-note slot="end">{{ provinceCount(provinceId()!) }} งาน</ion-note> }
+          </ion-item>
+          <ion-list-header>{{ districtUnit() }} (เลือกได้หลายแห่ง)</ion-list-header>
+          @for (d of districts(); track d.id) {
+            <ion-item>
+              <ion-checkbox justify="start" labelPlacement="end" [checked]="picked().has(d.id)" (ionChange)="toggle(d.id)">
+                {{ d.nameTh }}
+              </ion-checkbox>
+              @if (counts) { <ion-note slot="end" [class.zero]="!districtCount(d.id)">{{ districtCount(d.id) }} งาน</ion-note> }
+            </ion-item>
+          }
+        </ion-list>
+      }
+    }
+  }
+</ion-content>
+
+@if (step() === 'district' && !results()) {
+  <ion-footer>
+    <ion-toolbar>
+      <ion-button expand="block" class="ion-margin-horizontal" (click)="confirm()">
+        {{ confirmText }}
+        @if (picked().size) { ({{ picked().size }} {{ districtUnit() }}) } @else { (ทั้งจังหวัด) }
+      </ion-button>
+    </ion-toolbar>
+  </ion-footer>
+}

@@ -4798,5 +4798,806 @@
                 "sched_expire_close_expired_jobs_transaction"
             ]
         ]
+    },
+    {
+        "id": "jobs_cmt_search_detail_phase_4_public_no_login_ne",
+        "type": "comment",
+        "z": "tab_jobs",
+        "name": "Search + detail (Phase 4). Public: no login needed.",
+        "info": "",
+        "x": 170,
+        "y": 210,
+        "wires": []
+    },
+    {
+        "id": "jobs_area_counts_in",
+        "z": "tab_jobs",
+        "x": 150,
+        "y": 260,
+        "name": "GET /api/jobs/area-counts",
+        "type": "http in",
+        "url": "/api/jobs/area-counts",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "jobs_area_counts_build_area_count_query"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_area_counts_build_area_count_query",
+        "z": "tab_jobs",
+        "x": 360,
+        "y": 260,
+        "name": "Build area count query",
+        "type": "function",
+        "func": "// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\nmsg.topic = `SELECT j.province_id, j.district_id, COUNT(*) AS n\n        FROM jobs j ${SHOP_JOINS}\n        WHERE ${VISIBLE}\n        GROUP BY j.province_id, j.district_id`;\nmsg.payload = [];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_area_counts_count_open_jobs_per_area"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_area_counts_count_open_jobs_per_area",
+        "z": "tab_jobs",
+        "x": 570,
+        "y": 260,
+        "name": "Count open jobs per area",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "jobs_area_counts_format_area_counts"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_area_counts_format_area_counts",
+        "z": "tab_jobs",
+        "x": 780,
+        "y": 260,
+        "name": "Format area counts",
+        "type": "function",
+        "func": "const provinces = {};\nconst districts = {};\nlet total = 0;\nfor (const r of msg.payload) {\n    const n = Number(r.n);\n    provinces[r.province_id] = (provinces[r.province_id] || 0) + n;\n    districts[r.district_id] = n;\n    total += n;\n}\nmsg.statusCode = 200;\nmsg.headers = { 'Cache-Control': 'public, max-age=60' };\nmsg.payload = { total, provinces, districts };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_area_counts_out"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_area_counts_out",
+        "z": "tab_jobs",
+        "x": 990,
+        "y": 260,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "jobs_search_in",
+        "z": "tab_jobs",
+        "x": 150,
+        "y": 320,
+        "name": "GET /api/jobs",
+        "type": "http in",
+        "url": "/api/jobs",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "jobs_search_build_search_query"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_search_build_search_query",
+        "z": "tab_jobs",
+        "x": 360,
+        "y": 320,
+        "name": "Build search query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\n// \"1,2,3\" -> [1, 2, 3] (positive integers only, max 50); null when invalid\nfunction idList(text) {\n    if (text === undefined || text === '') return [];\n    const parts = String(text).split(',');\n    if (parts.length > 50 || parts.some((p) => !/^\\d{1,10}$/.test(p))) return null;\n    return [...new Set(parts.map(Number))];\n}\n\nconst sj = global.get('sj');\nconst q = msg.req.query;\nconst p = (msg.ctx = sj.paging(q));\nconst where = [VISIBLE];\nconst params = [];\nconst bad = (m) => fail(400, 'VALIDATION_ERROR', m);\nconst intParam = (v) => (v === undefined || v === '' ? null : /^\\d{1,10}$/.test(v) ? Number(v) : NaN);\n\nconst provinceId = intParam(q.provinceId);\nif (Number.isNaN(provinceId)) return bad('provinceId ไม่ถูกต้อง');\nif (provinceId) {\n    where.push('j.province_id = ?');\n    params.push(provinceId);\n}\nconst districtIds = idList(q.districtIds);\nif (!districtIds) return bad('districtIds ไม่ถูกต้อง');\nif (districtIds.length) {\n    where.push('j.district_id IN (?)');\n    params.push(districtIds);\n}\nconst categoryId = intParam(q.categoryId);\nif (Number.isNaN(categoryId)) return bad('categoryId ไม่ถูกต้อง');\nif (categoryId) {\n    where.push('j.category_id = ?');\n    params.push(categoryId);\n}\nif (q.wageUnit) {\n    if (!['hour', 'day', 'job'].includes(q.wageUnit)) return bad('wageUnit ไม่ถูกต้อง');\n    where.push('j.wage_unit = ?');\n    params.push(q.wageUnit);\n}\nfor (const [key, op] of [['wageMin', '>='], ['wageMax', '<=']]) {\n    if (q[key] === undefined || q[key] === '') continue;\n    const v = Number(q[key]);\n    if (!Number.isFinite(v) || v < 0) return bad(key + ' ไม่ถูกต้อง');\n    where.push(`j.wage ${op} ?`);\n    params.push(v);\n}\nif (q.workDays) {\n    const days = String(q.workDays).split(',');\n    if (days.some((d) => !sj.WEEKDAYS.includes(d))) return bad('workDays ไม่ถูกต้อง');\n    // SET column as a bit mask: any chosen weekday matches\n    where.push('(j.work_days & ?) <> 0');\n    params.push(sj.weekdayMask(days));\n}\nconst text = typeof q.q === 'string' ? q.q.trim().slice(0, 100) : '';\nif (text) {\n    const like = '%' + text.replace(/[\\\\%_]/g, (c) => '\\\\' + c) + '%';\n    where.push('(j.title LIKE ? OR s.name LIKE ?)');\n    params.push(like, like);\n}\n\nmsg.topic = `SELECT ${JOB_COLUMNS}, 1 AS accepting, s.name AS shop_name, s.image_file AS shop_image\n        FROM jobs j ${SHOP_JOINS} ${JOB_JOINS}\n        WHERE ${where.join(' AND ')}\n        ORDER BY j.created_at DESC, j.id DESC\n        LIMIT ? OFFSET ?`;\nmsg.payload = [...params, p.limit, p.offset];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_search_search_jobs"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_search_search_jobs",
+        "z": "tab_jobs",
+        "x": 570,
+        "y": 320,
+        "name": "Search jobs",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "jobs_search_format_search_results"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_search_format_search_results",
+        "z": "tab_jobs",
+        "x": 780,
+        "y": 320,
+        "name": "Format search results",
+        "type": "function",
+        "func": "const formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Public job: no shop phone / LINE (those come only with an accepted application)\nconst formatPublicJob = (r) => ({\n    ...formatJob(r),\n    acceptingApplications: !!r.accepting,\n    shop: { id: r.shop_id, name: r.shop_name, imagePath: r.shop_image ? 'shops/' + r.shop_image : null },\n});\n\nconst sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, (r) => {\n    const job = formatPublicJob(r);\n    delete job.description; // list rows stay small; the detail endpoint has it\n    return job;\n});\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_search_out"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_search_out",
+        "z": "tab_jobs",
+        "x": 990,
+        "y": 320,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "jobs_detail_in",
+        "z": "tab_jobs",
+        "x": 150,
+        "y": 380,
+        "name": "GET /api/jobs/:id(\\d+)",
+        "type": "http in",
+        "url": "/api/jobs/:id(\\d+)",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "jobs_detail_build_job_detail_query"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_detail_build_job_detail_query",
+        "z": "tab_jobs",
+        "x": 360,
+        "y": 380,
+        "name": "Build job detail query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n// Closed / expired jobs stay readable (saved jobs, applications) but are not accepting applications.\n// Hidden jobs and jobs of suspended or unverified shops are not shown at all.\nmsg.topic = `SELECT ${JOB_COLUMNS}, (${VISIBLE}) AS accepting,\n                     s.name AS shop_name, s.image_file AS shop_image, s.description AS shop_description, s.address AS shop_address,\n                     sp.name_th AS shop_province, sd.name_th AS shop_district, s.province_id AS shop_province_id\n        FROM jobs j ${SHOP_JOINS} ${JOB_JOINS}\n        JOIN provinces sp ON sp.id = s.province_id\n        JOIN districts sd ON sd.id = s.district_id\n        WHERE j.id = ? AND j.status <> 'hidden' AND s.verify_status = 'verified' AND u.status = 'active'`;\nmsg.payload = [id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_detail_load_job"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_detail_load_job",
+        "z": "tab_jobs",
+        "x": 570,
+        "y": 380,
+        "name": "Load job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "jobs_detail_format_job_detail"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_detail_format_job_detail",
+        "z": "tab_jobs",
+        "x": 780,
+        "y": 380,
+        "name": "Format job detail",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Public job: no shop phone / LINE (those come only with an accepted application)\nconst formatPublicJob = (r) => ({\n    ...formatJob(r),\n    acceptingApplications: !!r.accepting,\n    shop: { id: r.shop_id, name: r.shop_name, imagePath: r.shop_image ? 'shops/' + r.shop_image : null },\n});\n\nconst r = msg.payload[0];\nif (!r) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้ หรือประกาศถูกปิดไปแล้ว');\nconst job = formatPublicJob(r);\nObject.assign(job.shop, {\n    description: r.shop_description,\n    address: r.shop_address,\n    provinceId: r.shop_province_id,\n    provinceName: r.shop_province,\n    districtName: r.shop_district,\n});\nmsg.statusCode = 200;\nmsg.payload = { job };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "jobs_detail_out"
+            ]
+        ]
+    },
+    {
+        "id": "jobs_detail_out",
+        "z": "tab_jobs",
+        "x": 990,
+        "y": 380,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seekerx_cmt_profile_saved_jobs_phase_4_always_scoped",
+        "type": "comment",
+        "z": "tab_seeker",
+        "name": "Profile + saved jobs (Phase 4) — always scoped to msg.user.id",
+        "info": "",
+        "x": 170,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "seeker_profile_get_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 270,
+        "name": "GET /api/seeker/profile",
+        "type": "http in",
+        "url": "/api/seeker/profile",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_profile_get_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_profile_get_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 270,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_profile_get_build_profile_query"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_profile_get_build_profile_query",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 270,
+        "name": "Build profile query",
+        "type": "function",
+        "func": "msg.topic = `SELECT full_name, DATE_FORMAT(birth_date, '%Y-%m-%d') AS birth_date, phone, line_id, skills, bio, avatar_file\n        FROM seeker_profiles WHERE user_id = ?;\n        SELECT a.province_id, a.district_id, p.name_th AS province_name, d.name_th AS district_name\n        FROM seeker_areas a JOIN provinces p ON p.id = a.province_id LEFT JOIN districts d ON d.id = a.district_id\n        WHERE a.user_id = ? ORDER BY a.id`;\nmsg.payload = [msg.user.id, msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_profile_get_load_profile_areas"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_profile_get_load_profile_areas",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 270,
+        "name": "Load profile + areas",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "seeker_profile_get_format_profile"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_profile_get_format_profile",
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 270,
+        "name": "Format profile",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst [[p], areas] = msg.payload;\nif (!p) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกโปรไฟล์ก่อน');\nmsg.statusCode = 200;\nmsg.payload = {\n    profile: {\n        fullName: p.full_name,\n        birthDate: p.birth_date,\n        phone: p.phone,\n        lineId: p.line_id,\n        skills: p.skills,\n        bio: p.bio,\n        avatarPath: p.avatar_file ? 'avatars/' + p.avatar_file : null,\n        areas: areas.map((a) => ({\n            provinceId: a.province_id,\n            districtId: a.district_id,\n            provinceName: a.province_name,\n            districtName: a.district_name,\n        })),\n    },\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_profile_get_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_profile_get_out",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 270,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seeker_saved_list_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 330,
+        "name": "GET /api/seeker/saved-jobs",
+        "type": "http in",
+        "url": "/api/seeker/saved-jobs",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_saved_list_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_list_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 330,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_saved_list_build_saved_jobs_query"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_list_build_saved_jobs_query",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 330,
+        "name": "Build saved jobs query",
+        "type": "function",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\nconst sj = global.get('sj');\nconst p = (msg.ctx = sj.paging(msg.req.query));\nmsg.topic = `SELECT ${JOB_COLUMNS}, (${VISIBLE}) AS accepting, s.name AS shop_name, s.image_file AS shop_image,\n                     DATE_FORMAT(sv.created_at, '%Y-%m-%d %H:%i:%s') AS saved_at\n        FROM saved_jobs sv\n        JOIN jobs j ON j.id = sv.job_id\n        ${SHOP_JOINS} ${JOB_JOINS}\n        WHERE sv.user_id = ? AND j.status <> 'hidden'\n        ORDER BY sv.created_at DESC, j.id DESC\n        LIMIT ? OFFSET ?`;\nmsg.payload = [msg.user.id, p.limit, p.offset];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_saved_list_load_saved_jobs"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_list_load_saved_jobs",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 330,
+        "name": "Load saved jobs",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "seeker_saved_list_format_saved_jobs"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_list_format_saved_jobs",
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 330,
+        "name": "Format saved jobs",
+        "type": "function",
+        "func": "const formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Public job: no shop phone / LINE (those come only with an accepted application)\nconst formatPublicJob = (r) => ({\n    ...formatJob(r),\n    acceptingApplications: !!r.accepting,\n    shop: { id: r.shop_id, name: r.shop_name, imagePath: r.shop_image ? 'shops/' + r.shop_image : null },\n});\n\nconst sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, (r) => {\n    const job = formatPublicJob(r);\n    delete job.description;\n    return { ...job, savedAt: r.saved_at };\n});\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_saved_list_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_list_out",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 330,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seeker_saved_put_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 390,
+        "name": "PUT /api/seeker/saved-jobs/:jobId",
+        "type": "http in",
+        "url": "/api/seeker/saved-jobs/:jobId",
+        "method": "put",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_saved_put_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_put_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 390,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_saved_put_build_save_query"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_put_build_save_query",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 390,
+        "name": "Build save query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nconst id = routeId('jobId');\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n// Only jobs that exist and are not hidden; saving twice is a no-op\nmsg.topic = `INSERT IGNORE INTO saved_jobs (user_id, job_id)\n        SELECT ?, j.id FROM jobs j WHERE j.id = ? AND j.status <> 'hidden';\n        SELECT COUNT(*) AS saved FROM saved_jobs WHERE user_id = ? AND job_id = ?`;\nmsg.payload = [msg.user.id, id, msg.user.id, id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_saved_put_save_job"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_put_save_job",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 390,
+        "name": "Save job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "seeker_saved_put_format_save_response"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_put_format_save_response",
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 390,
+        "name": "Format save response",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nif (!Number(msg.payload[1][0].saved)) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = 200;\nmsg.payload = { saved: true };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_saved_put_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_put_out",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 390,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seeker_saved_delete_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 450,
+        "name": "DELETE /api/seeker/saved-jobs/:jobId",
+        "type": "http in",
+        "url": "/api/seeker/saved-jobs/:jobId",
+        "method": "delete",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_saved_delete_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_delete_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 450,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_saved_delete_build_unsave_query"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_delete_build_unsave_query",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 450,
+        "name": "Build unsave query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nconst id = routeId('jobId');\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.topic = 'DELETE FROM saved_jobs WHERE user_id = ? AND job_id = ?';\nmsg.payload = [msg.user.id, id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_saved_delete_remove_saved_job"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_delete_remove_saved_job",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 450,
+        "name": "Remove saved job",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "seeker_saved_delete_format_unsave_response"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_delete_format_unsave_response",
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 450,
+        "name": "Format unsave response",
+        "type": "function",
+        "func": "msg.statusCode = 200;\nmsg.payload = { saved: false };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_saved_delete_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_saved_delete_out",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 450,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seeker_job_status_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 510,
+        "name": "GET /api/seeker/jobs/:id/status",
+        "type": "http in",
+        "url": "/api/seeker/jobs/:id/status",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_job_status_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_job_status_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 510,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_job_status_build_job_status_query"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_job_status_build_job_status_query",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 510,
+        "name": "Build job status query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.topic = `SELECT COUNT(*) AS saved FROM saved_jobs WHERE user_id = ? AND job_id = ?;\n        SELECT id, status FROM applications WHERE seeker_user_id = ? AND job_id = ?`;\nmsg.payload = [msg.user.id, id, msg.user.id, id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_job_status_load_saved_application"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_job_status_load_saved_application",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 510,
+        "name": "Load saved / application",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "seeker_job_status_format_job_status"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_job_status_format_job_status",
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 510,
+        "name": "Format job status",
+        "type": "function",
+        "func": "const [[s], [a]] = msg.payload;\nmsg.statusCode = 200;\nmsg.payload = { saved: Number(s.saved) > 0, application: a ? { id: a.id, status: a.status } : null };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_job_status_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_job_status_out",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 510,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
     }
 ]

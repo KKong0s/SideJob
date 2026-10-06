@@ -1,0 +1,89 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/seeker/search" text="กลับ"></ion-back-button></ion-buttons>
+    <ion-title>รายละเอียดงาน</ion-title>
+    @if (status(); as s) {
+      <ion-buttons slot="end">
+        <ion-button (click)="toggleSave()" [disabled]="savingBookmark()" [attr.aria-label]="s.saved ? 'นำออกจากงานที่บันทึก' : 'บันทึกงาน'">
+          <ion-icon slot="icon-only" [name]="s.saved ? 'bookmark' : 'bookmark-outline'"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    }
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="refresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <app-page-state [state]="job.state()" (retry)="load()">
+    @if (job.value(); as j) {
+      <div class="ion-padding head">
+        <div class="category">
+          @if (j.category.icon) { <ion-icon [name]="j.category.icon" aria-hidden="true"></ion-icon> }
+          {{ j.category.name }}
+        </div>
+        <h1>{{ j.title }}</h1>
+        <p class="shop-name">{{ j.shop.name }}</p>
+        @if (!j.acceptingApplications) {
+          <ion-badge color="medium">ปิดรับสมัครแล้ว</ion-badge>
+        }
+        <p class="posted">โพสต์ {{ timeAgo(j.createdAt) }} · รับสมัครถึง {{ thaiDate(j.expiresOn) }}</p>
+      </div>
+
+      <ion-list lines="none" class="facts">
+        <ion-item>
+          <ion-icon slot="start" name="cash-outline" color="success" aria-hidden="true"></ion-icon>
+          <ion-label><h2 class="wage">{{ wageText(j) }}</h2></ion-label>
+        </ion-item>
+        <ion-item>
+          <ion-icon slot="start" name="location-outline" aria-hidden="true"></ion-icon>
+          <ion-label>{{ locationText(j) }}</ion-label>
+        </ion-item>
+        <ion-item>
+          <ion-icon slot="start" name="calendar-outline" aria-hidden="true"></ion-icon>
+          <ion-label class="ion-text-wrap">{{ daysText(j) }}</ion-label>
+        </ion-item>
+        <ion-item>
+          <ion-icon slot="start" name="time-outline" aria-hidden="true"></ion-icon>
+          <ion-label>{{ timeText(j) }}</ion-label>
+        </ion-item>
+        @if (j.minAge) {
+          <ion-item>
+            <ion-icon slot="start" name="person-outline" aria-hidden="true"></ion-icon>
+            <ion-label>อายุ {{ j.minAge }} ปีขึ้นไป</ion-label>
+          </ion-item>
+        }
+      </ion-list>
+
+      <section class="ion-padding-horizontal">
+        <h3>รายละเอียดงาน</h3>
+        <p class="pre">{{ j.description }}</p>
+      </section>
+
+      <ion-card class="shop-card">
+        <ion-card-content>
+          <div class="shop-row">
+            <div class="shop-thumb">
+              @if (j.shop.imagePath) {
+                <img [src]="uploadsUrl + '/' + j.shop.imagePath" alt="" />
+              } @else {
+                <span>{{ j.shop.name.slice(0, 1) }}</span>
+              }
+            </div>
+            <div>
+              <h3>{{ j.shop.name }}</h3>
+              <p>{{ j.shop.address }} {{ shopLocation(j) }}</p>
+            </div>
+          </div>
+          @if (j.shop.description) {
+            <p class="pre shop-desc">{{ j.shop.description }}</p>
+          }
+          <p class="note">เบอร์โทรและ LINE ของร้านจะแสดงหลังร้านรับคุณเข้าทำงาน</p>
+        </ion-card-content>
+      </ion-card>
+      <div class="bottom-space"></div>
+    }
+  </app-page-state>
+</ion-content>

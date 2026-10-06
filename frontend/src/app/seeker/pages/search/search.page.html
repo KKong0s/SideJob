@@ -1,0 +1,67 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>ค้นหางาน</ion-title>
+  </ion-toolbar>
+  <ion-toolbar class="area-bar">
+    <div class="area-row">
+      <ion-button fill="outline" size="small" class="area-button" (click)="chooseArea()">
+        <ion-icon slot="start" name="location-outline"></ion-icon>
+        <span class="area-text">{{ areaLabel() }}</span>
+        <ion-icon slot="end" name="chevron-down"></ion-icon>
+      </ion-button>
+      <ion-button fill="clear" size="small" (click)="openFilter()" aria-label="ตัวกรอง">
+        <ion-icon slot="icon-only" name="options-outline"></ion-icon>
+        @if (filterCount()) {
+          <ion-badge color="danger" class="filter-badge">{{ filterCount() }}</ion-badge>
+        }
+      </ion-button>
+    </div>
+  </ion-toolbar>
+  <ion-toolbar>
+    <ion-searchbar placeholder="ค้นหาชื่องานหรือชื่อร้าน" [debounce]="500" (ionInput)="setQuery($event.detail.value ?? '')"></ion-searchbar>
+  </ion-toolbar>
+  <ion-toolbar class="chips-bar">
+    <div class="chips">
+      <ion-chip [outline]="filter().categoryId !== null" [color]="filter().categoryId === null ? 'primary' : 'medium'" (click)="setCategory(null)">
+        <ion-label>ทั้งหมด</ion-label>
+      </ion-chip>
+      @for (c of categories(); track c.id) {
+        <ion-chip [outline]="filter().categoryId !== c.id" [color]="filter().categoryId === c.id ? 'primary' : 'medium'" (click)="setCategory(c.id)">
+          @if (c.icon) { <ion-icon [name]="c.icon" aria-hidden="true"></ion-icon> }
+          <ion-label>{{ c.name }}</ion-label>
+        </ion-chip>
+      }
+    </div>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="refresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <app-page-state
+    [state]="list.state()"
+    [thumbnail]="true"
+    emptyIcon="search-outline"
+    [emptyText]="area.selection() ? 'ยังไม่มีงานในพื้นที่นี้' : 'ไม่พบงานที่ตรงกับตัวกรอง'"
+    emptyHint="ลองขยายพื้นที่หรือเปลี่ยนตัวกรอง"
+    [actionText]="emptyAction()"
+    (action)="widen()"
+    (retry)="list.reload()"
+  >
+    <ion-list>
+      @for (job of list.items(); track job.id) {
+        <app-job-card [job]="job" [shopName]="job.shop.name" [shopImage]="job.shop.imagePath" (click)="open(job)">
+          <ng-container end>
+            <ion-note class="ago">{{ timeAgo(job.createdAt) }}</ion-note>
+          </ng-container>
+        </app-job-card>
+      }
+    </ion-list>
+  </app-page-state>
+
+  <ion-infinite-scroll [disabled]="!list.hasNext()" (ionInfinite)="list.loadMore($event)">
+    <ion-infinite-scroll-content loadingText="กำลังโหลดเพิ่ม..."></ion-infinite-scroll-content>
+  </ion-infinite-scroll>
+</ion-content>

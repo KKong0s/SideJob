@@ -65,5 +65,6 @@ npm start                   # http://localhost:4200  (หรือ `ionic serve`
 bash tests/api/auth.sh          # Phase 1: auth / onboarding / upload / geo (ต้องเปิด docker ไว้)
 bash tests/api/shop.sh          # Phase 2: โปรไฟล์ร้าน / เอกสารยืนยัน / แอดมินยืนยัน-ปฏิเสธ / audit log
 bash tests/api/jobs.sh          # Phase 3: โพสต์ / แก้ไข / ปิด / ต่ออายุประกาศ / ปิดอัตโนมัติ
+bash tests/api/search.sh        # Phase 4: ค้นหา / ตัวกรอง / pagination / บันทึกงาน
 cd frontend && npx ng test --watch=false && npx ng lint
 ```

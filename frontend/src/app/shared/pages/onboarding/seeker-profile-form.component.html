@@ -70,38 +70,10 @@
       </div>
     }
 
-    <ion-input
-      class="picker-field"
-      label="จังหวัด"
-      labelPlacement="floating"
-      fill="outline"
-      [readonly]="true"
-      placeholder="แตะเพื่อค้นหาจังหวัด"
-      [value]="pickProvinceLabel()"
-      (click)="chooseProvince()"
-      (keydown.enter)="chooseProvince()"
-    >
-      <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
-    </ion-input>
-
-    @if (pickProvince(); as provinceId) {
-      <ion-input
-        class="picker-field"
-        [label]="geo.districtLabel(provinceId) + ' (เลือกได้หลายแห่ง)'"
-        labelPlacement="floating"
-        fill="outline"
-        [readonly]="true"
-        [value]="pickDistrictsLabel()"
-        (click)="chooseDistricts()"
-        (keydown.enter)="chooseDistricts()"
-      >
-        <ion-icon slot="end" name="chevron-down" aria-hidden="true"></ion-icon>
-      </ion-input>
-      <ion-button fill="outline" expand="block" (click)="addArea()">
-        <ion-icon slot="start" name="add-outline"></ion-icon>
-        เพิ่มพื้นที่นี้
-      </ion-button>
-    }
+    <ion-button fill="outline" expand="block" (click)="addAreas()">
+      <ion-icon slot="start" name="add-outline"></ion-icon>
+      เพิ่มพื้นที่ (ภาค → จังหวัด → อำเภอ)
+    </ion-button>
 
     @if (areasTouched() && areas().length === 0) {
       <ion-note color="danger">กรุณาเลือกพื้นที่อย่างน้อย 1 แห่ง</ion-note>
@@ -134,6 +106,6 @@
   }
 
   <ion-button type="submit" expand="block" [disabled]="busy()">
-    @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { บันทึกและไปต่อ }
+    @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { {{ mode() === 'edit' ? 'บันทึกโปรไฟล์' : 'บันทึกและไปต่อ' }} }
   </ion-button>
 </form>
