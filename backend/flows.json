@@ -6817,5 +6817,468 @@
         "statusCode": "",
         "headers": {},
         "wires": []
+    },
+    {
+        "id": "notif_catch",
+        "type": "catch",
+        "z": "tab_notifications",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "notif_err"
+            ]
+        ]
+    },
+    {
+        "id": "notif_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_notifications",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "notif_cmt_api_notifications_any_logged_in_user_alw",
+        "type": "comment",
+        "z": "tab_notifications",
+        "name": "/api/notifications/* — any logged-in user, always WHERE user_id = msg.user.id",
+        "info": "",
+        "x": 170,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "notif_count_in",
+        "z": "tab_notifications",
+        "x": 150,
+        "y": 130,
+        "name": "GET /api/notifications/unread-count",
+        "type": "http in",
+        "url": "/api/notifications/unread-count",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "notif_count_auth"
+            ]
+        ]
+    },
+    {
+        "id": "notif_count_auth",
+        "z": "tab_notifications",
+        "x": 360,
+        "y": 130,
+        "name": "auth-check (any role)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "notif_count_build_unread_count_query"
+            ]
+        ]
+    },
+    {
+        "id": "notif_count_build_unread_count_query",
+        "z": "tab_notifications",
+        "x": 570,
+        "y": 130,
+        "name": "Build unread count query",
+        "type": "function",
+        "func": "msg.topic = 'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND is_read = 0';\nmsg.payload = [msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_count_count_unread"
+            ]
+        ]
+    },
+    {
+        "id": "notif_count_count_unread",
+        "z": "tab_notifications",
+        "x": 780,
+        "y": 130,
+        "name": "Count unread",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "notif_count_format_count"
+            ]
+        ]
+    },
+    {
+        "id": "notif_count_format_count",
+        "z": "tab_notifications",
+        "x": 990,
+        "y": 130,
+        "name": "Format count",
+        "type": "function",
+        "func": "msg.statusCode = 200;\nmsg.headers = { 'Cache-Control': 'no-store' };\nmsg.payload = { unread: Number(msg.payload[0].n) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_count_out"
+            ]
+        ]
+    },
+    {
+        "id": "notif_count_out",
+        "z": "tab_notifications",
+        "x": 1200,
+        "y": 130,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "notif_list_in",
+        "z": "tab_notifications",
+        "x": 150,
+        "y": 190,
+        "name": "GET /api/notifications",
+        "type": "http in",
+        "url": "/api/notifications",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "notif_list_auth"
+            ]
+        ]
+    },
+    {
+        "id": "notif_list_auth",
+        "z": "tab_notifications",
+        "x": 360,
+        "y": 190,
+        "name": "auth-check (any role)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "notif_list_build_notification_list_query"
+            ]
+        ]
+    },
+    {
+        "id": "notif_list_build_notification_list_query",
+        "z": "tab_notifications",
+        "x": 570,
+        "y": 190,
+        "name": "Build notification list query",
+        "type": "function",
+        "func": "const sj = global.get('sj');\nconst p = (msg.ctx = sj.paging(msg.req.query));\nconst unreadOnly = msg.req.query.unread === '1' || msg.req.query.unread === 'true';\nmsg.topic = `SELECT id, type, message, link, is_read, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at\n        FROM notifications WHERE user_id = ? ${unreadOnly ? 'AND is_read = 0' : ''}\n        ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`;\nmsg.payload = [msg.user.id, p.limit, p.offset];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_list_load_notifications"
+            ]
+        ]
+    },
+    {
+        "id": "notif_list_load_notifications",
+        "z": "tab_notifications",
+        "x": 780,
+        "y": 190,
+        "name": "Load notifications",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "notif_list_format_notifications"
+            ]
+        ]
+    },
+    {
+        "id": "notif_list_format_notifications",
+        "z": "tab_notifications",
+        "x": 990,
+        "y": 190,
+        "name": "Format notifications",
+        "type": "function",
+        "func": "const sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, (r) => ({\n    id: Number(r.id),\n    type: r.type,\n    message: r.message,\n    link: r.link,\n    isRead: !!r.is_read,\n    createdAt: r.created_at,\n}));\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_list_out"
+            ]
+        ]
+    },
+    {
+        "id": "notif_list_out",
+        "z": "tab_notifications",
+        "x": 1200,
+        "y": 190,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "notif_read_in",
+        "z": "tab_notifications",
+        "x": 150,
+        "y": 250,
+        "name": "POST /api/notifications/:id/read",
+        "type": "http in",
+        "url": "/api/notifications/:id/read",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "notif_read_auth"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_auth",
+        "z": "tab_notifications",
+        "x": 360,
+        "y": 250,
+        "name": "auth-check (any role)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "notif_read_build_mark_read_query"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_build_mark_read_query",
+        "z": "tab_notifications",
+        "x": 570,
+        "y": 250,
+        "name": "Build mark-read query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst id = /^\\d{1,15}$/.test(msg.req.params.id) ? msg.req.params.id : null;\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบการแจ้งเตือนนี้');\nmsg.topic = 'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?; SELECT COUNT(*) AS n FROM notifications WHERE id = ? AND user_id = ?';\nmsg.payload = [id, msg.user.id, id, msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_read_mark_read"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_mark_read",
+        "z": "tab_notifications",
+        "x": 780,
+        "y": 250,
+        "name": "Mark read",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "notif_read_format_mark_read_response"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_format_mark_read_response",
+        "z": "tab_notifications",
+        "x": 990,
+        "y": 250,
+        "name": "Format mark-read response",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nif (!Number(msg.payload[1][0].n)) return fail(404, 'NOT_FOUND', 'ไม่พบการแจ้งเตือนนี้');\nmsg.statusCode = 200;\nmsg.payload = { read: true };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_read_out"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_out",
+        "z": "tab_notifications",
+        "x": 1200,
+        "y": 250,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "notif_read_all_in",
+        "z": "tab_notifications",
+        "x": 150,
+        "y": 310,
+        "name": "POST /api/notifications/read-all",
+        "type": "http in",
+        "url": "/api/notifications/read-all",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "notif_read_all_auth"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_all_auth",
+        "z": "tab_notifications",
+        "x": 360,
+        "y": 310,
+        "name": "auth-check (any role)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "false",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "notif_read_all_build_read_all_query"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_all_build_read_all_query",
+        "z": "tab_notifications",
+        "x": 570,
+        "y": 310,
+        "name": "Build read-all query",
+        "type": "function",
+        "func": "msg.topic = 'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0';\nmsg.payload = [msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_read_all_mark_all_read"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_all_mark_all_read",
+        "z": "tab_notifications",
+        "x": 780,
+        "y": 310,
+        "name": "Mark all read",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "notif_read_all_format_read_all_response"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_all_format_read_all_response",
+        "z": "tab_notifications",
+        "x": 990,
+        "y": 310,
+        "name": "Format read-all response",
+        "type": "function",
+        "func": "msg.statusCode = 200;\nmsg.payload = { updated: msg.payload.affectedRows };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "notif_read_all_out"
+            ]
+        ]
+    },
+    {
+        "id": "notif_read_all_out",
+        "z": "tab_notifications",
+        "x": 1200,
+        "y": 310,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
     }
 ]

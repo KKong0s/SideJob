@@ -14,10 +14,12 @@ import {
   IonSegmentButton,
   IonTitle,
   IonToolbar,
+  IonButtons,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { documentTextOutline } from 'ionicons/icons';
 
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { JobCardComponent } from '../../../shared/components/job-card/job-card.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { APPLICATION_STATUS_COLOR, APPLICATION_STATUS_LABEL, MyApplication } from '../../../shared/models/application.model';
@@ -36,7 +38,9 @@ type Filter = keyof typeof FILTERS;
   selector: 'app-applications',
   template: `
     <ion-header>
-      <ion-toolbar><ion-title>ใบสมัครของฉัน</ion-title></ion-toolbar>
+      <ion-toolbar><ion-title>ใบสมัครของฉัน</ion-title>
+        <ion-buttons slot="end"><app-bell-button></app-bell-button></ion-buttons>
+      </ion-toolbar>
       <ion-toolbar>
         <ion-segment [value]="filter()" (ionChange)="setFilter($any($event.detail.value))">
           <ion-segment-button value="active">กำลังดำเนินการ</ion-segment-button>
@@ -75,6 +79,8 @@ type Filter = keyof typeof FILTERS;
     </ion-content>
   `,
   imports: [
+    BellButtonComponent,
+    IonButtons,
     IonHeader,
     IonToolbar,
     IonTitle,

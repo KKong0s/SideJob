@@ -583,6 +583,41 @@ Search results, saved jobs and the detail endpoint return the job fields above (
 - **Response 200:** `{ "total": 85, "provinces": { "1": 40, "38": 12 }, "districts": { "1001": 5, "5001": 7 } }` (areas without jobs are left out)
 
 
+## Notifications
+
+All endpoints need a logged-in user (any role) and only touch the caller's own rows (`WHERE user_id = <JWT user>`).
+Rows are created by the Node-RED flow of each event (in the same transaction) through `sj.notify()`; a future
+FCM push sender can hook into that one function.
+
+| type | Receiver | When | link |
+|---|---|---|---|
+| `application.new` | shop | New application | `/shop/applicants/:id` |
+| `application.accepted` / `application.rejected` | seeker | Shop decided, or job closed / expired / hidden (auto-reject) | `/seeker/applications/:id` (auto-reject: `/seeker/applications`) |
+| `application.cancelled` | shop | Seeker cancelled an accepted application | `/shop/applicants/:id` |
+| `application.completed` | seeker | Shop confirmed the work is done | `/seeker/applications/:id` |
+| `shop.verified` / `shop.rejected` | shop | Admin decision | `/shop/profile` |
+| `job.expired` | shop | Daily expiry | `/shop/jobs/:id` |
+| `job.hidden` | shop | Admin hid the job | `/shop/jobs/:id` |
+| `review.received` | both | The other side left a review | `/seeker/profile` or `/shop/profile` |
+
+### `GET /api/notifications/unread-count`
+
+- **Response 200:** `{ "unread": 3 }` (`Cache-Control: no-store`). The app calls it on every page change and every 60 seconds.
+
+### `GET /api/notifications`
+
+- **Query:** `unread=1` (only unread), `page`, `pageSize`
+- **Response 200:** page of `{ "id": 41, "type": "application.accepted", "message": "...", "link": "/seeker/applications/7", "isRead": false, "createdAt": "2026-10-06 15:00:00" }`, newest first
+
+### `POST /api/notifications/:id/read`
+
+- **Response 200:** `{ "read": true }`
+- **Errors:** 404 (not the caller's notification)
+
+### `POST /api/notifications/read-all`
+
+- **Response 200:** `{ "updated": 4 }`
+
 ## Scheduled
 
 ### Daily expiry (inject, every day 00:00 Asia/Bangkok)

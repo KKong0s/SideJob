@@ -16,10 +16,12 @@ import {
   IonRow,
   IonTitle,
   IonToolbar,
+  IonButtons,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { add, alertCircleOutline, hourglassOutline } from 'ionicons/icons';
 
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { Applicant } from '../../../shared/models/application.model';
 import { AuthService } from '../../../shared/services/auth.service';
@@ -33,6 +35,7 @@ import { ApplicantItemComponent } from '../../components/applicant-item.componen
     <ion-header>
       <ion-toolbar>
         <ion-title>แดชบอร์ดร้าน</ion-title>
+        <ion-buttons slot="end"><app-bell-button></app-bell-button></ion-buttons>
       </ion-toolbar>
     </ion-header>
     <ion-content>
@@ -134,6 +137,8 @@ import { ApplicantItemComponent } from '../../components/applicant-item.componen
     }
   `,
   imports: [
+    BellButtonComponent,
+    IonButtons,
     RouterLink,
     IonHeader,
     IonToolbar,

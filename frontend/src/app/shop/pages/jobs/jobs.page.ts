@@ -25,6 +25,7 @@ import {
 import { addIcons } from 'ionicons';
 import { add, briefcaseOutline } from 'ionicons/icons';
 
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { JobCardComponent } from '../../../shared/components/job-card/job-card.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { JOB_STATUS_COLOR, JOB_STATUS_LABEL, JobStatus, OwnJob } from '../../../shared/models/job.model';
@@ -41,11 +42,12 @@ type Filter = JobStatus | 'all';
     <ion-header>
       <ion-toolbar>
         <ion-title>ประกาศของฉัน</ion-title>
-        @if (verified()) {
-          <ion-buttons slot="end">
+        <ion-buttons slot="end">
+          @if (verified()) {
             <ion-button routerLink="/shop/jobs/new"><ion-icon slot="start" name="add"></ion-icon>โพสต์งาน</ion-button>
-          </ion-buttons>
-        }
+          }
+          <app-bell-button></app-bell-button>
+        </ion-buttons>
       </ion-toolbar>
       <ion-toolbar>
         <ion-segment [value]="filter()" (ionChange)="setFilter($any($event.detail.value))">
@@ -108,6 +110,7 @@ type Filter = JobStatus | 'all';
     </ion-content>
   `,
   imports: [
+    BellButtonComponent,
     RouterLink,
     IonHeader,
     IonToolbar,

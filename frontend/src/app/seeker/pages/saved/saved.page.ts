@@ -13,10 +13,12 @@ import {
   IonRefresherContent,
   IonTitle,
   IonToolbar,
+  IonButtons,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { bookmark, bookmarkOutline } from 'ionicons/icons';
 
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { JobCardComponent } from '../../../shared/components/job-card/job-card.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { SavedJob } from '../../../shared/models/search.model';
@@ -27,7 +29,9 @@ import { PagedList } from '../../../shared/utils/paged-list';
   selector: 'app-saved',
   template: `
     <ion-header>
-      <ion-toolbar><ion-title>งานที่บันทึกไว้</ion-title></ion-toolbar>
+      <ion-toolbar><ion-title>งานที่บันทึกไว้</ion-title>
+        <ion-buttons slot="end"><app-bell-button></app-bell-button></ion-buttons>
+      </ion-toolbar>
     </ion-header>
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="list.refresh($event)">
@@ -64,6 +68,8 @@ import { PagedList } from '../../../shared/utils/paged-list';
     </ion-content>
   `,
   imports: [
+    BellButtonComponent,
+    IonButtons,
     IonHeader,
     IonToolbar,
     IonTitle,

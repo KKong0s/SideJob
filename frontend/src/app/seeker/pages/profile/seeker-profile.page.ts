@@ -25,6 +25,7 @@ import { addIcons } from 'ionicons';
 import { createOutline, locationOutline, personCircleOutline } from 'ionicons/icons';
 
 import { environment } from '../../../../environments/environment';
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { LogoutButtonComponent } from '../../../shared/components/logout-button/logout-button.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { SeekerArea } from '../../../shared/models/search.model';
@@ -41,7 +42,7 @@ import { Loader } from '../../../shared/utils/loader';
     <ion-header>
       <ion-toolbar>
         <ion-title>โปรไฟล์</ion-title>
-        <ion-buttons slot="end"><app-logout-button></app-logout-button></ion-buttons>
+        <ion-buttons slot="end"><app-bell-button></app-bell-button><app-logout-button></app-logout-button></ion-buttons>
       </ion-toolbar>
     </ion-header>
     <ion-content>
@@ -151,6 +152,7 @@ import { Loader } from '../../../shared/utils/loader';
     }
   `,
   imports: [
+    BellButtonComponent,
     IonHeader,
     IonToolbar,
     IonTitle,

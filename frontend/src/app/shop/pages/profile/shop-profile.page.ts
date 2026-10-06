@@ -34,6 +34,7 @@ import {
 } from 'ionicons/icons';
 
 import { environment } from '../../../../environments/environment';
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { LogoutButtonComponent } from '../../../shared/components/logout-button/logout-button.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { Shop, VERIFY_STATUS_COLOR, VERIFY_STATUS_LABEL } from '../../../shared/models/shop.model';
@@ -50,6 +51,7 @@ import { DOCUMENT_TYPES, IMAGE_TYPES, checkUpload, takeFile } from '../../../sha
   templateUrl: 'shop-profile.page.html',
   styleUrls: ['shop-profile.page.scss'],
   imports: [
+    BellButtonComponent,
     IonHeader,
     IonToolbar,
     IonTitle,

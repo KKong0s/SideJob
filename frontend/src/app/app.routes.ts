@@ -22,6 +22,11 @@ export const routes: Routes = [
     loadComponent: () => import('./shared/pages/onboarding/onboarding.page').then((m) => m.OnboardingPage),
   },
   {
+    path: 'notifications',
+    canMatch: [authGuard, profileCompleteGuard],
+    loadComponent: () => import('./shared/pages/notifications/notifications.page').then((m) => m.NotificationsPage),
+  },
+  {
     path: 'seeker',
     canMatch: [authGuard, profileCompleteGuard, roleGuard],
     data: { roles: ['seeker'] },

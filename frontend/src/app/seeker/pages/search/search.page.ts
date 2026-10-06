@@ -19,10 +19,12 @@ import {
   IonToolbar,
   ModalController,
   RefresherCustomEvent,
+  IonButtons,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { chevronDown, locationOutline, optionsOutline, searchOutline } from 'ionicons/icons';
 
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { openAreaPicker } from '../../../shared/components/area-picker/area-picker.component';
 import { JobCardComponent } from '../../../shared/components/job-card/job-card.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
@@ -41,6 +43,8 @@ import { JobFilterComponent } from './job-filter.component';
   templateUrl: 'search.page.html',
   styleUrls: ['search.page.scss'],
   imports: [
+    BellButtonComponent,
+    IonButtons,
     IonHeader,
     IonToolbar,
     IonTitle,

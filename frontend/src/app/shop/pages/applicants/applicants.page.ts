@@ -15,10 +15,12 @@ import {
   IonSegmentButton,
   IonTitle,
   IonToolbar,
+  IonButtons,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { closeCircle, peopleOutline } from 'ionicons/icons';
 
+import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { Applicant } from '../../../shared/models/application.model';
 import { ShopService } from '../../../shared/services/shop.service';
@@ -32,7 +34,9 @@ type Filter = 'pending' | 'accepted' | 'all';
   selector: 'app-applicants',
   template: `
     <ion-header>
-      <ion-toolbar><ion-title>ผู้สมัคร</ion-title></ion-toolbar>
+      <ion-toolbar><ion-title>ผู้สมัคร</ion-title>
+        <ion-buttons slot="end"><app-bell-button></app-bell-button></ion-buttons>
+      </ion-toolbar>
       <ion-toolbar>
         <ion-segment [value]="filter()" (ionChange)="setFilter($any($event.detail.value))">
           <ion-segment-button value="pending">รอพิจารณา</ion-segment-button>
@@ -75,6 +79,8 @@ type Filter = 'pending' | 'accepted' | 'all';
     </ion-content>
   `,
   imports: [
+    BellButtonComponent,
+    IonButtons,
     IonHeader,
     IonToolbar,
     IonTitle,
