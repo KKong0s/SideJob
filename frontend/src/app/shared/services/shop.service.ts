@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { Applicant, ShopDashboard } from '../models/application.model';
 import { JobInput, JobStatus, OwnJob } from '../models/job.model';
 import { Page, toHttpParams } from '../models/page.model';
 import { ShopProfileInput } from '../models/session.model';
@@ -66,6 +67,29 @@ export class ShopService {
   async renewJob(id: number): Promise<string> {
     const res = await firstValueFrom(this.http.post<{ expiresOn: string }>(`${this.api}/jobs/${id}/renew`, {}));
     return res.expiresOn;
+  }
+
+  // --- Applicants ----------------------------------------------------------
+
+  dashboard(context?: HttpContext): Promise<ShopDashboard> {
+    return firstValueFrom(this.http.get<ShopDashboard>(`${this.api}/dashboard`, { context }));
+  }
+
+  applications(params: { status: string; jobId: number | null; page: number }, context?: HttpContext): Promise<Page<Applicant>> {
+    return firstValueFrom(this.http.get<Page<Applicant>>(`${this.api}/applications`, { params: toHttpParams(params), context }));
+  }
+
+  async application(id: number, context?: HttpContext): Promise<Applicant> {
+    const res = await firstValueFrom(this.http.get<{ application: Applicant }>(`${this.api}/applications/${id}`, { context }));
+    return res.application;
+  }
+
+  async accept(id: number): Promise<void> {
+    await firstValueFrom(this.http.post(`${this.api}/applications/${id}/accept`, {}));
+  }
+
+  async reject(id: number): Promise<void> {
+    await firstValueFrom(this.http.post(`${this.api}/applications/${id}/reject`, {}));
   }
 }
 

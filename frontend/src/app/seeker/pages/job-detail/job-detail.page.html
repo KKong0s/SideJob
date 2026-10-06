@@ -87,3 +87,32 @@
     }
   </app-page-state>
 </ion-content>
+
+@if (job.value() && status()) {
+  <ion-footer>
+    <ion-toolbar class="apply-bar">
+      @switch (applyState()) {
+        @case ('can-apply') {
+          <ion-button expand="block" [disabled]="applying()" (click)="apply()">
+            @if (applying()) { <ion-spinner name="dots"></ion-spinner> } @else { สมัครงานนี้ }
+          </ion-button>
+        }
+        @case ('pending') {
+          <ion-button expand="block" fill="outline" color="warning" (click)="openApplication()">สมัครแล้ว · รอร้านพิจารณา</ion-button>
+        }
+        @case ('accepted') {
+          <ion-button expand="block" color="success" (click)="openApplication()">ร้านรับคุณแล้ว · ดูช่องทางติดต่อ</ion-button>
+        }
+        @case ('completed') {
+          <ion-button expand="block" fill="outline" (click)="openApplication()">งานเสร็จแล้ว</ion-button>
+        }
+        @case ('rejected') {
+          <ion-button expand="block" fill="outline" color="medium" (click)="openApplication()">ไม่ได้รับการคัดเลือก</ion-button>
+        }
+        @default {
+          <ion-button expand="block" disabled>ปิดรับสมัครแล้ว</ion-button>
+        }
+      }
+    </ion-toolbar>
+  </ion-footer>
+}

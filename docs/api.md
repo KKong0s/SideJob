@@ -36,11 +36,13 @@ Every error uses the same body:
 | 403 | `FORBIDDEN` | Role not allowed for this endpoint |
 | 403 | `ACCOUNT_SUSPENDED` | Account suspended by an admin |
 | 403 | `PROFILE_INCOMPLETE` | Endpoint requires finished onboarding |
+| 403 | `AGE_REQUIREMENT` | Seeker is younger than the job's minimum age |
 | 403 | `SHOP_NOT_VERIFIED` | Shop must be verified to post / renew jobs |
 | 403 | `ADMIN_PASSWORD_ONLY` | Admin tried Google Sign-In |
 | 404 | `NOT_FOUND` | Resource does not exist (or caller may not see it) |
 | 409 | `EMAIL_TAKEN`, `ROLE_ALREADY_SET`, `PROFILE_REQUIRED`, `GOOGLE_LINK_REQUIRED`, `GOOGLE_ACCOUNT_CONFLICT`, `CONFLICT` | State conflict / duplicate |
 | 409 | `ALREADY_VERIFIED` | Shop tried to upload a verification document after being verified |
+| 409 | `JOB_CLOSED`, `ALREADY_APPLIED` | Applying to a job that is not accepting applications / applying twice |
 | 409 | `JOB_LOCKED` | Job has applications, so wage / schedule cannot change |
 | 409 | `JOB_HIDDEN` | Job was hidden by an admin and cannot be edited / renewed |
 | 409 | `RENEW_LIMIT` | Job already expires 60 days ahead |
@@ -257,6 +259,51 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
 - The caller's relation to a job, for the job detail page.
 - **Response 200:** `{ "saved": true, "application": { "id": 7, "status": "pending" } }` (`application: null` when not applied)
 
+### Application (seeker view)
+
+```json
+{
+  "id": 7,
+  "status": "accepted",
+  "appliedAt": "2026-10-06 12:00:00",
+  "decidedAt": "2026-10-06 15:00:00",
+  "cancelledAt": null,
+  "completedAt": null,
+  "job": <public job object>,
+  "contact": { "phone": "053123456", "lineId": "@cafe" }
+}
+```
+
+- `status`: `pending` → `accepted` → `completed`, or `rejected` / `cancelled`
+- **`contact` (the shop's phone / LINE) is only filled when the status is `accepted` or `completed`**, and only the
+  application's own seeker can read it (checked in the SQL `WHERE a.seeker_user_id = <JWT user>`). Otherwise `null`.
+
+### `POST /api/seeker/jobs/:id/apply`
+
+- **Role:** seeker with completed onboarding
+- The job must accept applications (open, not expired, shop verified). The seeker must meet `minAge`.
+- A `cancelled` application to the same job is reused (back to `pending`); any other existing application → 409.
+- Notifies the shop owner (`application.new`, link `/shop/applicants/:applicationId`). One transaction.
+- **Response 201:** `{ "application": { "id": 7, "status": "pending" } }`
+- **Errors:** 403 `AGE_REQUIREMENT`, 404 `NOT_FOUND`, 409 `JOB_CLOSED` / `ALREADY_APPLIED`
+
+### `POST /api/seeker/applications/:id/cancel`
+
+- Own application in `pending` or `accepted`. Cancelling an accepted one notifies the shop (`application.cancelled`).
+- **Response 200:** `{ "id": 7, "status": "cancelled" }`
+- **Errors:** 404, 409 `INVALID_STATE`
+
+### `GET /api/seeker/applications`
+
+- **Query:** `status` (comma-separated, e.g. `pending,accepted`; empty / `all` = all), `page`, `pageSize`
+- **Response 200:** page of applications (job without `description`), most recently updated first
+- **Errors:** 400 `VALIDATION_ERROR`
+
+### `GET /api/seeker/applications/:id`
+
+- **Response 200:** `{ "application": <application, job with description> }`
+- **Errors:** 404
+
 ## Shop
 
 All `/api/shop/*` endpoints require role **shop** with onboarding completed (`403 PROFILE_INCOMPLETE` otherwise).
@@ -404,6 +451,61 @@ Only `verified` shops can post jobs.
 - New expiry = max(today, current expiry) + 30 days, capped at today + 60. Also reopens a `closed` job.
 - **Response 200:** `{ "id": 15, "status": "open", "expiresOn": "2026-12-05" }`
 - **Errors:** 403 `SHOP_NOT_VERIFIED`, 404, 409 `JOB_HIDDEN` / `RENEW_LIMIT`
+
+### Applicant (shop view)
+
+```json
+{
+  "id": 7,
+  "status": "pending",
+  "appliedAt": "2026-10-06 12:00:00", "decidedAt": null, "cancelledAt": null, "completedAt": null,
+  "job": { "id": 15, "title": "พนักงานเสิร์ฟ", "status": "open" },
+  "seeker": { "id": 12, "fullName": "สมชาย ใจดี", "age": 26, "avatarPath": "avatars/3f1c...e9.jpg", "skills": "ชงกาแฟ" },
+  "contact": null
+}
+```
+
+- The detail endpoint adds `seeker.bio`.
+- **`contact` (the seeker's phone / LINE) is only filled when the status is `accepted` or `completed`**, and only for
+  the shop that owns the job (`WHERE s.owner_user_id = <JWT user>`). The seeker's birth date is never sent, only the age.
+
+### `GET /api/shop/applications`
+
+- **Query:** `jobId` (one of the shop's jobs), `status` (comma-separated; default: all except `cancelled`), `page`, `pageSize`
+- Order: pending first, then newest application.
+- **Response 200:** page of applicants
+- **Errors:** 400 `VALIDATION_ERROR`
+
+### `GET /api/shop/applications/:id`
+
+- **Response 200:** `{ "application": <applicant with seeker.bio> }`
+- **Errors:** 404 (not the shop's job)
+
+### `POST /api/shop/applications/:id/accept`
+
+- `pending` → `accepted`; notifies the seeker (`application.accepted`, link `/seeker/applications/:id`). One transaction.
+- **Response 200:** `{ "id": 7, "status": "accepted" }`
+- **Errors:** 404, 409 `INVALID_STATE`
+
+### `POST /api/shop/applications/:id/reject`
+
+- `pending` → `rejected`; notifies the seeker (`application.rejected`). A rejected seeker cannot apply to the same job again.
+- **Response 200:** `{ "id": 7, "status": "rejected" }`
+- **Errors:** 404, 409 `INVALID_STATE`
+
+### `GET /api/shop/dashboard`
+
+- **Response 200**
+
+  ```json
+  {
+    "verifyStatus": "verified",
+    "openJobs": 2, "expiringJobs": 1, "pendingApplicants": 3, "acceptedApplicants": 1,
+    "recentApplicants": [<applicant>]
+  }
+  ```
+
+  `expiringJobs` = open jobs expiring within 3 days; `recentApplicants` = up to 5 latest pending applicants.
 
 ## Jobs (public)
 

@@ -17,6 +17,10 @@ export const SHOP_ROUTES: Routes = [
     loadComponent: () => import('./pages/job-detail/shop-job-detail.page').then((m) => m.ShopJobDetailPage),
   },
   {
+    path: 'applicants/:id',
+    loadComponent: () => import('./pages/applicant-detail/applicant-detail.page').then((m) => m.ApplicantDetailPage),
+  },
+  {
     path: '',
     component: ShopTabsPage,
     children: [

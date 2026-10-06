@@ -66,5 +66,6 @@ bash tests/api/auth.sh          # Phase 1: auth / onboarding / upload / geo (ต
 bash tests/api/shop.sh          # Phase 2: โปรไฟล์ร้าน / เอกสารยืนยัน / แอดมินยืนยัน-ปฏิเสธ / audit log
 bash tests/api/jobs.sh          # Phase 3: โพสต์ / แก้ไข / ปิด / ต่ออายุประกาศ / ปิดอัตโนมัติ
 bash tests/api/search.sh        # Phase 4: ค้นหา / ตัวกรอง / pagination / บันทึกงาน
+bash tests/api/applications.sh  # Phase 5: สมัคร / ยกเลิก / รับ / ปฏิเสธ / ช่องทางติดต่อ
 cd frontend && npx ng test --watch=false && npx ng lint
 ```

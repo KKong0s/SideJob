@@ -5599,5 +5599,852 @@
         "statusCode": "",
         "headers": {},
         "wires": []
+    },
+    {
+        "id": "seekerx_cmt_applications_phase_5_scoped_to_a_seeker_",
+        "type": "comment",
+        "z": "tab_seeker",
+        "name": "Applications (Phase 5) — scoped to a.seeker_user_id = msg.user.id; shop contact only when accepted / completed",
+        "info": "",
+        "x": 170,
+        "y": 590,
+        "wires": []
+    },
+    {
+        "id": "seeker_apply_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 640,
+        "name": "POST /api/seeker/jobs/:id/apply",
+        "type": "http in",
+        "url": "/api/seeker/jobs/:id/apply",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_apply_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apply_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 640,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_apply_apply_transaction_notify_shop"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apply_apply_transaction_notify_shop",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 640,
+        "name": "Apply (transaction + notify shop)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\ntry {\n    const jobId = routeId();\n    if (!jobId) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n    const uid = msg.user.id;\n    const app = await sj.tx(async (db) => {\n        const [[job]] = await db.query(\n            `SELECT j.id, j.title, j.min_age, s.owner_user_id, (${VISIBLE}) AS accepting\n             FROM jobs j ${SHOP_JOINS}\n             WHERE j.id = ? AND j.status <> 'hidden' AND s.verify_status = 'verified' AND u.status = 'active'`,\n            [jobId],\n        );\n        if (!job) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n        if (!job.accepting) throw sj.httpError(409, 'JOB_CLOSED', 'ประกาศนี้ปิดรับสมัครแล้ว');\n\n        const [[me]] = await db.query('SELECT full_name, birth_date FROM seeker_profiles WHERE user_id = ?', [uid]);\n        if (!me) throw sj.httpError(409, 'PROFILE_REQUIRED', 'กรุณากรอกโปรไฟล์ก่อน');\n        if (job.min_age && sj.ageOn(me.birth_date, sj.today()) < job.min_age) {\n            throw sj.httpError(403, 'AGE_REQUIREMENT', `งานนี้รับผู้สมัครอายุ ${job.min_age} ปีขึ้นไป`);\n        }\n\n        const [[existing]] = await db.query(\n            'SELECT id, status FROM applications WHERE job_id = ? AND seeker_user_id = ? FOR UPDATE',\n            [jobId, uid],\n        );\n        let id;\n        if (existing) {\n            // A cancelled application can be sent again (same row); anything else is a duplicate\n            if (existing.status !== 'cancelled') throw sj.httpError(409, 'ALREADY_APPLIED', 'คุณสมัครงานนี้ไปแล้ว');\n            await db.query(\n                \"UPDATE applications SET status = 'pending', applied_at = NOW(), decided_at = NULL, cancelled_at = NULL WHERE id = ?\",\n                [existing.id],\n            );\n            id = existing.id;\n        } else {\n            const [res] = await db.query('INSERT INTO applications (job_id, seeker_user_id) VALUES (?, ?)', [jobId, uid]);\n            id = res.insertId;\n        }\n        await sj.notify(db, job.owner_user_id, 'application.new', `${me.full_name} สมัครงาน \"${job.title}\"`, `/shop/applicants/${id}`);\n        return { id };\n    });\n    msg.statusCode = 201;\n    msg.payload = { application: { id: app.id, status: 'pending' } };\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_apply_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apply_out",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 640,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seeker_app_cancel_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 700,
+        "name": "POST /api/seeker/applications/:id/cancel",
+        "type": "http in",
+        "url": "/api/seeker/applications/:id/cancel",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_app_cancel_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_cancel_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 700,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_app_cancel_cancel_own_application_transaction"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_cancel_cancel_own_application_transaction",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 700,
+        "name": "Cancel own application (transaction)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\ntry {\n    const id = routeId();\n    if (!id) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\n    await sj.tx(async (db) => {\n        const [[a]] = await db.query(\n            `SELECT a.id, a.status, j.title, s.owner_user_id, sp.full_name\n             FROM applications a JOIN jobs j ON j.id = a.job_id JOIN shops s ON s.id = j.shop_id\n             JOIN seeker_profiles sp ON sp.user_id = a.seeker_user_id\n             WHERE a.id = ? AND a.seeker_user_id = ? FOR UPDATE`,\n            [id, msg.user.id],\n        );\n        if (!a) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\n        if (!['pending', 'accepted'].includes(a.status)) throw sj.httpError(409, 'INVALID_STATE', 'ยกเลิกใบสมัครนี้ไม่ได้แล้ว');\n        await db.query(\"UPDATE applications SET status = 'cancelled', cancelled_at = NOW() WHERE id = ?\", [id]);\n        // The shop was counting on an accepted applicant: tell them\n        if (a.status === 'accepted') {\n            await sj.notify(db, a.owner_user_id, 'application.cancelled', `${a.full_name} ยกเลิกงาน \"${a.title}\"`, `/shop/applicants/${id}`);\n        }\n    });\n    msg.statusCode = 200;\n    msg.payload = { id, status: 'cancelled' };\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_app_cancel_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_cancel_out",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 700,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seeker_apps_list_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 760,
+        "name": "GET /api/seeker/applications",
+        "type": "http in",
+        "url": "/api/seeker/applications",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_apps_list_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apps_list_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 760,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_apps_list_build_my_applications_query"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apps_list_build_my_applications_query",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 760,
+        "name": "Build my applications query",
+        "type": "function",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\nconst APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\n// ?status=pending,accepted -> SQL condition on a.status ('' = all)\nfunction statusFilter(text) {\n    const all = ['pending', 'accepted', 'rejected', 'cancelled', 'completed'];\n    if (!text || text === 'all') return { sql: '', params: [] };\n    const list = String(text).split(',');\n    if (list.some((s) => !all.includes(s))) return null;\n    return { sql: ' AND a.status IN (?)', params: [list] };\n}\n\n// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\nconst p = (msg.ctx = sj.paging(msg.req.query));\nconst f = statusFilter(msg.req.query.status);\nif (!f) return fail(400, 'VALIDATION_ERROR', 'สถานะไม่ถูกต้อง');\nmsg.topic = `SELECT ${APP_COLUMNS}, ${JOB_COLUMNS}, (${VISIBLE}) AS accepting,\n       s.name AS shop_name, s.image_file AS shop_image, s.phone AS shop_phone, s.line_id AS shop_line\nFROM applications a\nJOIN jobs j ON j.id = a.job_id\n${SHOP_JOINS} ${JOB_JOINS}\n    WHERE a.seeker_user_id = ?${f.sql}\n    ORDER BY a.updated_at DESC, a.id DESC\n    LIMIT ? OFFSET ?`;\nmsg.payload = [msg.user.id, ...f.params, p.limit, p.offset];\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_apps_list_load_my_applications"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apps_list_load_my_applications",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 760,
+        "name": "Load my applications",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "seeker_apps_list_format_my_applications"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apps_list_format_my_applications",
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 760,
+        "name": "Format my applications",
+        "type": "function",
+        "func": "const formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Public job: no shop phone / LINE (those come only with an accepted application)\nconst formatPublicJob = (r) => ({\n    ...formatJob(r),\n    acceptingApplications: !!r.accepting,\n    shop: { id: r.shop_id, name: r.shop_name, imagePath: r.shop_image ? 'shops/' + r.shop_image : null },\n});\n\nconst APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\nconst sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, (r) => {\n    const job = formatPublicJob(r);\n    delete job.description;\n    return { ...formatApp(r), job, contact: CONTACT_OPEN.includes(r.app_status) ? { phone: r.shop_phone, lineId: r.shop_line } : null };\n});\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_apps_list_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_apps_list_out",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 760,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "seeker_app_get_in",
+        "z": "tab_seeker",
+        "x": 150,
+        "y": 820,
+        "name": "GET /api/seeker/applications/:id",
+        "type": "http in",
+        "url": "/api/seeker/applications/:id",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "seeker_app_get_auth"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_get_auth",
+        "z": "tab_seeker",
+        "x": 360,
+        "y": 820,
+        "name": "auth-check (seeker)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "seeker",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "seeker_app_get_build_my_application_query"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_get_build_my_application_query",
+        "z": "tab_seeker",
+        "x": 570,
+        "y": 820,
+        "name": "Build my application query",
+        "type": "function",
+        "func": "// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\nconst APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\n// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\nmsg.topic = `SELECT ${APP_COLUMNS}, ${JOB_COLUMNS}, (${VISIBLE}) AS accepting,\n       s.name AS shop_name, s.image_file AS shop_image, s.phone AS shop_phone, s.line_id AS shop_line\nFROM applications a\nJOIN jobs j ON j.id = a.job_id\n${SHOP_JOINS} ${JOB_JOINS}\n    WHERE a.id = ? AND a.seeker_user_id = ?`;\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_app_get_load_my_application"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_get_load_my_application",
+        "z": "tab_seeker",
+        "x": 780,
+        "y": 820,
+        "name": "Load my application",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "seeker_app_get_format_my_application"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_get_format_my_application",
+        "z": "tab_seeker",
+        "x": 990,
+        "y": 820,
+        "name": "Format my application",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Public job: no shop phone / LINE (those come only with an accepted application)\nconst formatPublicJob = (r) => ({\n    ...formatJob(r),\n    acceptingApplications: !!r.accepting,\n    shop: { id: r.shop_id, name: r.shop_name, imagePath: r.shop_image ? 'shops/' + r.shop_image : null },\n});\n\nconst APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\nconst r = msg.payload[0];\nif (!r) return fail(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\nmsg.statusCode = 200;\nmsg.payload = {\n    application: {\n        ...formatApp(r),\n        job: formatPublicJob(r),\n        contact: CONTACT_OPEN.includes(r.app_status) ? { phone: r.shop_phone, lineId: r.shop_line } : null,\n    },\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "seeker_app_get_out"
+            ]
+        ]
+    },
+    {
+        "id": "seeker_app_get_out",
+        "z": "tab_seeker",
+        "x": 1200,
+        "y": 820,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_cmt_applicants_phase_5_scoped_to_s_owner_use",
+        "type": "comment",
+        "z": "tab_shop",
+        "name": "Applicants (Phase 5) — scoped to s.owner_user_id = msg.user.id; seeker contact only when accepted / completed",
+        "info": "",
+        "x": 170,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "shop_apps_list_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 970,
+        "name": "GET /api/shop/applications",
+        "type": "http in",
+        "url": "/api/shop/applications",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_apps_list_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_apps_list_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 970,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_apps_list_build_applicants_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_apps_list_build_applicants_query",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 970,
+        "name": "Build applicants query",
+        "type": "function",
+        "func": "const APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\n// ?status=pending,accepted -> SQL condition on a.status ('' = all)\nfunction statusFilter(text) {\n    const all = ['pending', 'accepted', 'rejected', 'cancelled', 'completed'];\n    if (!text || text === 'all') return { sql: '', params: [] };\n    const list = String(text).split(',');\n    if (list.some((s) => !all.includes(s))) return null;\n    return { sql: ' AND a.status IN (?)', params: [list] };\n}\n\n// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\nconst q = msg.req.query;\nconst p = (msg.ctx = sj.paging(q));\nconst f = statusFilter(q.status);\nif (!f) return fail(400, 'VALIDATION_ERROR', 'สถานะไม่ถูกต้อง');\nconst where = ['s.owner_user_id = ?'];\nconst params = [msg.user.id];\nif (q.jobId) {\n    if (!/^\\d{1,10}$/.test(q.jobId)) return fail(400, 'VALIDATION_ERROR', 'jobId ไม่ถูกต้อง');\n    where.push('a.job_id = ?');\n    params.push(Number(q.jobId));\n}\n// Cancelled applications are hidden unless asked for explicitly\nif (!f.sql) where.push(\"a.status <> 'cancelled'\");\nmsg.topic = `SELECT ${APP_COLUMNS}, j.id AS job_id, j.title AS job_title, j.status AS job_status,\n       sp.full_name, DATE_FORMAT(sp.birth_date, '%Y-%m-%d') AS birth_date, sp.avatar_file, sp.skills, sp.bio,\n       sp.phone AS seeker_phone, sp.line_id AS seeker_line\nFROM applications a\nJOIN jobs j ON j.id = a.job_id\nJOIN shops s ON s.id = j.shop_id\nJOIN seeker_profiles sp ON sp.user_id = a.seeker_user_id\n    WHERE ${where.join(' AND ')}${f.sql}\n    ORDER BY (a.status = 'pending') DESC, a.applied_at DESC, a.id DESC\n    LIMIT ? OFFSET ?`;\nmsg.payload = [...params, ...f.params, p.limit, p.offset];\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_apps_list_load_applicants"
+            ]
+        ]
+    },
+    {
+        "id": "shop_apps_list_load_applicants",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 970,
+        "name": "Load applicants",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_apps_list_format_applicants"
+            ]
+        ]
+    },
+    {
+        "id": "shop_apps_list_format_applicants",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 970,
+        "name": "Format applicants",
+        "type": "function",
+        "func": "const APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\nconst formatApplicant = (r, detail) => {\n    const sj = global.get('sj');\n    const seeker = {\n        id: r.seeker_user_id,\n        fullName: r.full_name,\n        age: r.birth_date ? sj.ageOn(r.birth_date, sj.today()) : null,\n        avatarPath: r.avatar_file ? 'avatars/' + r.avatar_file : null,\n        skills: r.skills,\n    };\n    if (detail) seeker.bio = r.bio;\n    return {\n        ...formatApp(r),\n        job: { id: r.job_id, title: r.job_title, status: r.job_status },\n        seeker,\n        contact: CONTACT_OPEN.includes(r.app_status) ? { phone: r.seeker_phone, lineId: r.seeker_line } : null,\n    };\n};\n\nconst sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, (r) => formatApplicant(r, false));\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_apps_list_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_apps_list_out",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 970,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_app_get_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 1030,
+        "name": "GET /api/shop/applications/:id",
+        "type": "http in",
+        "url": "/api/shop/applications/:id",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_app_get_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_get_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 1030,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_app_get_build_applicant_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_get_build_applicant_query",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 1030,
+        "name": "Build applicant query",
+        "type": "function",
+        "func": "// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nconst APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\n// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\nmsg.topic = `SELECT ${APP_COLUMNS}, j.id AS job_id, j.title AS job_title, j.status AS job_status,\n       sp.full_name, DATE_FORMAT(sp.birth_date, '%Y-%m-%d') AS birth_date, sp.avatar_file, sp.skills, sp.bio,\n       sp.phone AS seeker_phone, sp.line_id AS seeker_line\nFROM applications a\nJOIN jobs j ON j.id = a.job_id\nJOIN shops s ON s.id = j.shop_id\nJOIN seeker_profiles sp ON sp.user_id = a.seeker_user_id\n    WHERE a.id = ? AND s.owner_user_id = ?`;\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_app_get_load_applicant"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_get_load_applicant",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 1030,
+        "name": "Load applicant",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_app_get_format_applicant"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_get_format_applicant",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 1030,
+        "name": "Format applicant",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\nconst formatApplicant = (r, detail) => {\n    const sj = global.get('sj');\n    const seeker = {\n        id: r.seeker_user_id,\n        fullName: r.full_name,\n        age: r.birth_date ? sj.ageOn(r.birth_date, sj.today()) : null,\n        avatarPath: r.avatar_file ? 'avatars/' + r.avatar_file : null,\n        skills: r.skills,\n    };\n    if (detail) seeker.bio = r.bio;\n    return {\n        ...formatApp(r),\n        job: { id: r.job_id, title: r.job_title, status: r.job_status },\n        seeker,\n        contact: CONTACT_OPEN.includes(r.app_status) ? { phone: r.seeker_phone, lineId: r.seeker_line } : null,\n    };\n};\n\nconst r = msg.payload[0];\nif (!r) return fail(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\nmsg.statusCode = 200;\nmsg.payload = { application: formatApplicant(r, true) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_app_get_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_get_out",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 1030,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_app_accept_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 1090,
+        "name": "POST /api/shop/applications/:id/accept",
+        "type": "http in",
+        "url": "/api/shop/applications/:id/accept",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_app_accept_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_accept_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 1090,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_app_accept_accept_applicant_transaction_notify"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_accept_accept_applicant_transaction_notify",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 1090,
+        "name": "Accept applicant (transaction + notify)",
+        "type": "function",
+        "func": "const sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\ntry {\n    const id = routeId();\n    if (!id) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\n    await sj.tx(async (db) => {\n        const [[a]] = await db.query(\n            `SELECT a.id, a.status, a.seeker_user_id, j.title, s.name AS shop_name\n             FROM applications a JOIN jobs j ON j.id = a.job_id JOIN shops s ON s.id = j.shop_id\n             WHERE a.id = ? AND s.owner_user_id = ? FOR UPDATE`,\n            [id, msg.user.id],\n        );\n        if (!a) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\n        if (a.status !== 'pending') throw sj.httpError(409, 'INVALID_STATE', 'ใบสมัครนี้ไม่ได้อยู่ในสถานะรอพิจารณา');\n        await db.query(\"UPDATE applications SET status = 'accepted', decided_at = NOW() WHERE id = ?\", [id]);\n        await sj.notify(db, a.seeker_user_id, 'application.accepted', `ร้าน ${a.shop_name} รับคุณเข้าทำงาน \"${a.title}\" แล้ว ดูช่องทางติดต่อร้านได้เลย`, `/seeker/applications/${id}`);\n    });\n    msg.statusCode = 200;\n    msg.payload = { id, status: 'accepted' };\n    return msg;\n\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_app_accept_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_accept_out",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 1090,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_app_reject_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 1150,
+        "name": "POST /api/shop/applications/:id/reject",
+        "type": "http in",
+        "url": "/api/shop/applications/:id/reject",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_app_reject_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_reject_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 1150,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_app_reject_reject_applicant_transaction_notify"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_reject_reject_applicant_transaction_notify",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 1150,
+        "name": "Reject applicant (transaction + notify)",
+        "type": "function",
+        "func": "const sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\ntry {\n    const id = routeId();\n    if (!id) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\n    await sj.tx(async (db) => {\n        const [[a]] = await db.query(\n            `SELECT a.id, a.status, a.seeker_user_id, j.title, s.name AS shop_name\n             FROM applications a JOIN jobs j ON j.id = a.job_id JOIN shops s ON s.id = j.shop_id\n             WHERE a.id = ? AND s.owner_user_id = ? FOR UPDATE`,\n            [id, msg.user.id],\n        );\n        if (!a) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบใบสมัครนี้');\n        if (a.status !== 'pending') throw sj.httpError(409, 'INVALID_STATE', 'ใบสมัครนี้ไม่ได้อยู่ในสถานะรอพิจารณา');\n        await db.query(\"UPDATE applications SET status = 'rejected', decided_at = NOW() WHERE id = ?\", [id]);\n        await sj.notify(db, a.seeker_user_id, 'application.rejected', `ร้าน ${a.shop_name} ไม่ได้เลือกใบสมัครงาน \"${a.title}\" ของคุณ`, `/seeker/applications/${id}`);\n    });\n    msg.statusCode = 200;\n    msg.payload = { id, status: 'rejected' };\n    return msg;\n\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_app_reject_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_app_reject_out",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 1150,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_dashboard_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 1210,
+        "name": "GET /api/shop/dashboard",
+        "type": "http in",
+        "url": "/api/shop/dashboard",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_dashboard_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_dashboard_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 1210,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_dashboard_build_dashboard_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_dashboard_build_dashboard_query",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 1210,
+        "name": "Build dashboard query",
+        "type": "function",
+        "func": "const APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\nconst SHOP_APP_SELECT = `SELECT ${APP_COLUMNS}, j.id AS job_id, j.title AS job_title, j.status AS job_status,\n       sp.full_name, DATE_FORMAT(sp.birth_date, '%Y-%m-%d') AS birth_date, sp.avatar_file, sp.skills, sp.bio,\n       sp.phone AS seeker_phone, sp.line_id AS seeker_line\nFROM applications a\nJOIN jobs j ON j.id = a.job_id\nJOIN shops s ON s.id = j.shop_id\nJOIN seeker_profiles sp ON sp.user_id = a.seeker_user_id`;\n\nconst uid = msg.user.id;\nmsg.topic = `SELECT s.id, s.verify_status,\n                (SELECT COUNT(*) FROM jobs j WHERE j.shop_id = s.id AND j.status = 'open') AS open_jobs,\n                (SELECT COUNT(*) FROM jobs j WHERE j.shop_id = s.id AND j.status = 'open' AND j.expires_on <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)) AS expiring_jobs,\n                (SELECT COUNT(*) FROM applications a JOIN jobs j ON j.id = a.job_id WHERE j.shop_id = s.id AND a.status = 'pending') AS pending_applicants,\n                (SELECT COUNT(*) FROM applications a JOIN jobs j ON j.id = a.job_id WHERE j.shop_id = s.id AND a.status = 'accepted') AS accepted_applicants\n        FROM shops s WHERE s.owner_user_id = ?;\n        ${SHOP_APP_SELECT}\n        WHERE s.owner_user_id = ? AND a.status = 'pending'\n        ORDER BY a.applied_at DESC LIMIT 5`;\nmsg.payload = [uid, uid];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_dashboard_load_dashboard"
+            ]
+        ]
+    },
+    {
+        "id": "shop_dashboard_load_dashboard",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 1210,
+        "name": "Load dashboard",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_dashboard_format_dashboard"
+            ]
+        ]
+    },
+    {
+        "id": "shop_dashboard_format_dashboard",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 1210,
+        "name": "Format dashboard",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst APP_COLUMNS = `a.id AS app_id, a.status AS app_status, a.seeker_user_id,\n       DATE_FORMAT(a.applied_at, '%Y-%m-%d %H:%i:%s') AS applied_at,\n       DATE_FORMAT(a.decided_at, '%Y-%m-%d %H:%i:%s') AS decided_at,\n       DATE_FORMAT(a.cancelled_at, '%Y-%m-%d %H:%i:%s') AS cancelled_at,\n       DATE_FORMAT(a.completed_at, '%Y-%m-%d %H:%i:%s') AS completed_at`;\n// Contact details are only shared once the shop accepted the application\nconst CONTACT_OPEN = ['accepted', 'completed'];\nconst formatApp = (r) => ({\n    id: r.app_id,\n    status: r.app_status,\n    appliedAt: r.applied_at,\n    decidedAt: r.decided_at,\n    cancelledAt: r.cancelled_at,\n    completedAt: r.completed_at,\n});\n\nconst formatApplicant = (r, detail) => {\n    const sj = global.get('sj');\n    const seeker = {\n        id: r.seeker_user_id,\n        fullName: r.full_name,\n        age: r.birth_date ? sj.ageOn(r.birth_date, sj.today()) : null,\n        avatarPath: r.avatar_file ? 'avatars/' + r.avatar_file : null,\n        skills: r.skills,\n    };\n    if (detail) seeker.bio = r.bio;\n    return {\n        ...formatApp(r),\n        job: { id: r.job_id, title: r.job_title, status: r.job_status },\n        seeker,\n        contact: CONTACT_OPEN.includes(r.app_status) ? { phone: r.seeker_phone, lineId: r.seeker_line } : null,\n    };\n};\n\nconst [[s], recent] = msg.payload;\nif (!s) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกข้อมูลร้านก่อน');\nmsg.statusCode = 200;\nmsg.payload = {\n    verifyStatus: s.verify_status,\n    openJobs: Number(s.open_jobs),\n    expiringJobs: Number(s.expiring_jobs),\n    pendingApplicants: Number(s.pending_applicants),\n    acceptedApplicants: Number(s.accepted_applicants),\n    recentApplicants: recent.map((r) => formatApplicant(r, false)),\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_dashboard_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_dashboard_out",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 1210,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
     }
 ]
