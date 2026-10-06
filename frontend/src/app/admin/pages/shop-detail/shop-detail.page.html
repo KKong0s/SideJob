@@ -1,0 +1,125 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button defaultHref="/admin/shops" text="กลับ"></ion-back-button></ion-buttons>
+    <ion-title>รายละเอียดร้าน</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <app-page-state [state]="shop.state()" (retry)="shop.load()">
+    @if (shop.value(); as s) {
+      <div class="wrap">
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>{{ s.name }}</ion-card-title>
+            <div><ion-badge [color]="statusColor[s.verifyStatus]">{{ statusLabel[s.verifyStatus] }}</ion-badge></div>
+          </ion-card-header>
+          <ion-card-content>
+            @if (s.imagePath) {
+              <img class="shop-image" [src]="uploadsUrl + '/' + s.imagePath" alt="รูปร้าน" />
+            }
+            <ion-list lines="full">
+              <ion-item>
+                <ion-label class="ion-text-wrap">
+                  <p>ที่อยู่</p>
+                  <h3>{{ s.address }} · {{ s.districtName }}, {{ s.provinceName }}</h3>
+                </ion-label>
+              </ion-item>
+              <ion-item>
+                <ion-label>
+                  <p>เบอร์โทร / LINE</p>
+                  <h3>{{ s.phone || '-' }} · {{ s.lineId || '-' }}</h3>
+                </ion-label>
+              </ion-item>
+              <ion-item>
+                <ion-label>
+                  <p>เจ้าของ</p>
+                  <h3>{{ s.owner.email }} @if (s.owner.status === 'suspended') { <ion-note color="danger">(ถูกระงับ)</ion-note> }</h3>
+                  <p>สมัครเมื่อ {{ thaiDateTime(s.owner.createdAt) }}</p>
+                </ion-label>
+              </ion-item>
+              <ion-item>
+                <ion-label>
+                  <p>ประกาศงาน</p>
+                  <h3>ทั้งหมด {{ s.jobCount }} · เปิดรับ {{ s.openJobCount }}</h3>
+                </ion-label>
+              </ion-item>
+              @if (s.description) {
+                <ion-item>
+                  <ion-label class="ion-text-wrap">
+                    <p>รายละเอียดร้าน</p>
+                    <h3 style="white-space: pre-line">{{ s.description }}</h3>
+                  </ion-label>
+                </ion-item>
+              }
+              @if (s.verifySubmittedAt) {
+                <ion-item>
+                  <ion-label>
+                    <p>ส่งเอกสารล่าสุด</p>
+                    <h3>{{ thaiDateTime(s.verifySubmittedAt) }}</h3>
+                  </ion-label>
+                </ion-item>
+              }
+              @if (s.verifyStatus === 'rejected') {
+                <ion-item>
+                  <ion-label class="ion-text-wrap">
+                    <p>เหตุผลที่ปฏิเสธ</p>
+                    <h3>{{ s.rejectReason }}</h3>
+                  </ion-label>
+                </ion-item>
+              }
+              @if (s.verifiedAt) {
+                <ion-item>
+                  <ion-label>
+                    <p>ยืนยันเมื่อ</p>
+                    <h3>{{ thaiDateTime(s.verifiedAt) }}</h3>
+                  </ion-label>
+                </ion-item>
+              }
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>เอกสารยืนยัน</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            @if (!s.hasVerifyDoc) {
+              <p>ร้านยังไม่ได้อัปโหลดเอกสาร</p>
+            } @else if (docUrl()) {
+              @if (s.verifyDocType === 'pdf') {
+                <iframe class="doc-frame" [src]="docFrameUrl()" title="เอกสารยืนยันร้าน"></iframe>
+              } @else {
+                <img class="doc-image" [src]="docUrl()" alt="เอกสารยืนยันร้าน" />
+              }
+              <ion-button fill="clear" size="small" [href]="docUrl()" target="_blank" rel="noopener">
+                <ion-icon slot="start" name="open-outline"></ion-icon>เปิดในแท็บใหม่
+              </ion-button>
+            } @else {
+              <ion-button fill="outline" [disabled]="docLoading()" (click)="showDocument()">
+                @if (docLoading()) {
+                  <ion-spinner name="dots"></ion-spinner>
+                } @else {
+                  <ion-icon slot="start" name="document-text-outline"></ion-icon>
+                  ดูเอกสาร ({{ s.verifyDocType?.toUpperCase() }})
+                }
+              </ion-button>
+            }
+          </ion-card-content>
+        </ion-card>
+
+        @if (s.verifyStatus === 'pending') {
+          <div class="actions">
+            <ion-button color="success" [disabled]="busy()" (click)="verify()">
+              <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>ยืนยันร้าน
+            </ion-button>
+            <ion-button color="danger" fill="outline" [disabled]="busy()" (click)="reject()">
+              <ion-icon slot="start" name="close-circle-outline"></ion-icon>ปฏิเสธ
+            </ion-button>
+          </div>
+        }
+      </div>
+    }
+  </app-page-state>
+</ion-content>

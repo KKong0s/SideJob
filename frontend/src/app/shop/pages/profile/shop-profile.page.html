@@ -1,0 +1,134 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>โปรไฟล์ร้าน</ion-title>
+    <ion-buttons slot="end"><app-logout-button></app-logout-button></ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="shop.refresh($event)">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <app-page-state [state]="shop.state()" (retry)="shop.load()">
+    @if (shop.value(); as s) {
+      <div class="shop-header">
+        <div class="shop-image">
+          @if (s.imagePath) {
+            <img [src]="uploadsUrl + '/' + s.imagePath" alt="รูปร้าน" />
+          } @else {
+            <ion-icon name="storefront-outline" aria-hidden="true"></ion-icon>
+          }
+        </div>
+        <div class="shop-title">
+          <h2>{{ s.name }}</h2>
+          <ion-badge [color]="statusColor[s.verifyStatus]">{{ statusLabel[s.verifyStatus] }}</ion-badge>
+          <div>
+            <ion-button size="small" fill="clear" [disabled]="uploadingImage()" (click)="imageInput.click()">
+              @if (uploadingImage()) {
+                <ion-spinner name="dots"></ion-spinner>
+              } @else {
+                <ion-icon slot="start" name="camera-outline"></ion-icon>เปลี่ยนรูปร้าน
+              }
+            </ion-button>
+            <input #imageInput type="file" accept="image/jpeg,image/png" hidden (change)="onImageSelected($event)" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Verification -->
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>การยืนยันร้าน</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          @switch (s.verifyStatus) {
+            @case ('verified') {
+              <p class="status-line">
+                <ion-icon name="checkmark-circle" color="success" aria-hidden="true"></ion-icon>
+                ร้านผ่านการยืนยันแล้วเมื่อ {{ thaiDateTime(s.verifiedAt) }} โพสต์ประกาศงานได้เลย
+              </p>
+            }
+            @case ('pending') {
+              <p class="status-line">
+                <ion-icon name="hourglass-outline" color="warning" aria-hidden="true"></ion-icon>
+                ส่งเอกสารแล้วเมื่อ {{ thaiDateTime(s.verifySubmittedAt) }} กำลังรอแอดมินตรวจสอบ
+              </p>
+              <ion-note>ถ้าส่งไฟล์ผิด สามารถส่งเอกสารใหม่แทนได้</ion-note>
+            }
+            @case ('rejected') {
+              <p class="status-line">
+                <ion-icon name="alert-circle-outline" color="danger" aria-hidden="true"></ion-icon>
+                ไม่ผ่านการยืนยัน
+              </p>
+              <p class="reason"><strong>เหตุผล:</strong> {{ s.rejectReason }}</p>
+              <ion-note>แก้ไขตามเหตุผลแล้วส่งเอกสารใหม่ได้</ion-note>
+            }
+            @default {
+              <p>ร้านต้องผ่านการยืนยันก่อนจึงจะโพสต์ประกาศงานได้</p>
+              <ion-note>อัปโหลดเอกสาร เช่น หนังสือรับรองการจดทะเบียนพาณิชย์ หรือใบอนุญาตประกอบกิจการ (PDF, JPG หรือ PNG ไม่เกิน 5 MB)</ion-note>
+            }
+          }
+
+          @if (s.verifyStatus !== 'verified') {
+            <ion-button expand="block" class="ion-margin-top" [disabled]="uploadingDoc()" (click)="docInput.click()">
+              @if (uploadingDoc()) {
+                <ion-spinner name="dots"></ion-spinner>
+              } @else {
+                <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+                {{ s.hasVerifyDoc ? 'ส่งเอกสารใหม่' : 'อัปโหลดเอกสารยืนยัน' }}
+              }
+            </ion-button>
+            <input #docInput type="file" accept="application/pdf,image/jpeg,image/png" hidden (change)="onDocumentSelected($event)" />
+          }
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Details -->
+      <ion-card>
+        <ion-card-header class="details-header">
+          <ion-card-title>ข้อมูลร้าน</ion-card-title>
+          @if (!editing()) {
+            <ion-button size="small" fill="clear" (click)="startEdit()">
+              <ion-icon slot="start" name="create-outline"></ion-icon>แก้ไข
+            </ion-button>
+          }
+        </ion-card-header>
+        <ion-card-content>
+          @if (editing()) {
+            <app-shop-profile-form mode="edit" [initial]="s" (updated)="onUpdated($event)"></app-shop-profile-form>
+            <ion-button expand="block" fill="clear" color="medium" (click)="editing.set(false)">ยกเลิก</ion-button>
+          } @else {
+            <ion-list lines="full" class="details">
+              <ion-item>
+                <ion-label>
+                  <p>ที่อยู่</p>
+                  <h3>{{ s.address }} {{ s.provinceId === 1 ? 'เขต' : 'อ.' }}{{ s.districtName }} {{ s.provinceId === 1 ? '' : 'จ.' }}{{ s.provinceName }}</h3>
+                </ion-label>
+              </ion-item>
+              <ion-item>
+                <ion-label>
+                  <p>เบอร์โทร</p>
+                  <h3>{{ s.phone || '-' }}</h3>
+                </ion-label>
+              </ion-item>
+              <ion-item>
+                <ion-label>
+                  <p>LINE ID</p>
+                  <h3>{{ s.lineId || '-' }}</h3>
+                </ion-label>
+              </ion-item>
+              <ion-item lines="none">
+                <ion-label class="ion-text-wrap">
+                  <p>รายละเอียดร้าน</p>
+                  <h3 class="pre">{{ s.description || '-' }}</h3>
+                </ion-label>
+              </ion-item>
+            </ion-list>
+            <ion-note>ผู้หางานจะเห็นเบอร์โทรและ LINE หลังร้านรับเข้าทำงานเท่านั้น</ion-note>
+          }
+        </ion-card-content>
+      </ion-card>
+    }
+  </app-page-state>
+</ion-content>

@@ -79,13 +79,15 @@
     formControlName="description"
   ></ion-textarea>
 
-  <ion-note>รูปร้านและเอกสารยืนยันร้าน อัปโหลดได้ในหน้าโปรไฟล์ร้านหลังสมัครเสร็จ</ion-note>
+  @if (mode() === 'onboarding') {
+    <ion-note>รูปร้านและเอกสารยืนยันร้าน อัปโหลดได้ในหน้าโปรไฟล์ร้านหลังสมัครเสร็จ</ion-note>
+  }
 
   @if (error()) {
     <ion-note color="danger">{{ error() }}</ion-note>
   }
 
   <ion-button type="submit" expand="block" [disabled]="busy()">
-    @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { บันทึกและไปต่อ }
+    @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { {{ mode() === 'edit' ? 'บันทึกข้อมูลร้าน' : 'บันทึกและไปต่อ' }} }
   </ion-button>
 </form>

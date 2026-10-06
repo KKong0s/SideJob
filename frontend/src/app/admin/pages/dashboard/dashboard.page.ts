@@ -1,26 +1,110 @@
 import { Component, inject } from '@angular/core';
-import { IonButtons, IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
+import { RouterLink } from '@angular/router';
+import {
+  IonButtons,
+  IonCard,
+  IonCardContent,
+  IonCol,
+  IonContent,
+  IonGrid,
+  IonHeader,
+  IonMenuButton,
+  IonRefresher,
+  IonRefresherContent,
+  IonRow,
+  IonTitle,
+  IonToolbar,
+} from '@ionic/angular';
 
-import { LogoutButtonComponent } from '../../../shared/components/logout-button/logout-button.component';
-import { AuthService } from '../../../shared/services/auth.service';
+import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
+import { Loader } from '../../../shared/utils/loader';
+import { AdminStats } from '../../admin.model';
+import { AdminService } from '../../admin.service';
 
-// Placeholder until the feature phase is implemented.
+interface Tile {
+  key: keyof AdminStats;
+  label: string;
+  link?: string;
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   template: `
     <ion-header>
       <ion-toolbar>
-        <ion-title>แดชบอร์ดแอดมิน</ion-title>
-        <ion-buttons slot="end"><app-logout-button></app-logout-button></ion-buttons>
+        <ion-buttons slot="start"><ion-menu-button></ion-menu-button></ion-buttons>
+        <ion-title>แดชบอร์ด</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">
-      <p>สวัสดี {{ auth.user()?.displayName ?? auth.user()?.email }}</p>
-      <p>กำลังพัฒนา</p>
+    <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="stats.refresh($event)">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
+      <app-page-state [state]="stats.state()" (retry)="stats.load()">
+        @if (stats.value(); as s) {
+          <ion-grid>
+            <ion-row>
+              @for (tile of tiles; track tile.key) {
+                <ion-col size="6" size-md="4">
+                  <ion-card [routerLink]="tile.link" [button]="!!tile.link" [class.highlight]="tile.key === 'pendingShops' && s.pendingShops > 0">
+                    <ion-card-content>
+                      <div class="value">{{ s[tile.key].toLocaleString('th-TH') }}</div>
+                      <div class="label">{{ tile.label }}</div>
+                    </ion-card-content>
+                  </ion-card>
+                </ion-col>
+              }
+            </ion-row>
+          </ion-grid>
+        }
+      </app-page-state>
     </ion-content>
   `,
-  imports: [IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, LogoutButtonComponent],
+  styles: `
+    .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--ion-text-color);
+    }
+    .label {
+      color: var(--ion-color-medium);
+    }
+    ion-card.highlight {
+      border: 2px solid var(--ion-color-warning);
+    }
+  `,
+  imports: [
+    RouterLink,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonMenuButton,
+    IonTitle,
+    IonContent,
+    IonRefresher,
+    IonRefresherContent,
+    IonGrid,
+    IonRow,
+    IonCol,
+    IonCard,
+    IonCardContent,
+    PageStateComponent,
+  ],
 })
 export class AdminDashboardPage {
-  readonly auth = inject(AuthService);
+  private readonly admin = inject(AdminService);
+  readonly stats = new Loader((ctx) => this.admin.stats(ctx));
+
+  readonly tiles: Tile[] = [
+    { key: 'pendingShops', label: 'ร้านรอยืนยัน', link: '/admin/shops' },
+    { key: 'shops', label: 'ร้านค้าทั้งหมด' },
+    { key: 'seekers', label: 'ผู้หางาน' },
+    { key: 'openJobs', label: 'ประกาศที่เปิดรับ' },
+    { key: 'applications', label: 'ใบสมัครทั้งหมด' },
+    { key: 'openReports', label: 'รายงานที่รอจัดการ' },
+  ];
+
+  ionViewWillEnter(): void {
+    void this.stats.load();
+  }
 }

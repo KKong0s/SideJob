@@ -44,6 +44,8 @@ npm start                   # http://localhost:4200  (หรือ `ionic serve`
 - `backend/` ถูก mount เป็น user dir (`/data`) ของ Node-RED ดังนั้นการแก้ flow ใน editor จะบันทึกลง `backend/flows.json` โดยตรง
 - `backend/flows_cred.json` ถูก commit เข้า Git และไม่เข้ารหัส **ให้ใส่ได้เฉพาะ `${ENV_VAR}` เท่านั้น** ห้ามพิมพ์รหัสผ่านจริงลงช่อง credential ใน editor
 - ไลบรารีที่ใช้ใน function node ได้: `global.get('bcrypt')`, `global.get('jwt')`, `global.get('googleAuth')`, `global.get('crypto')`
+- `global.get('sj')` = `backend/helpers/sidejob.js` (แก้แล้วต้อง restart Node-RED): `tx()` transaction ผ่าน mysql2 pool, `paging()` / `pageResult()`, `notify()`, `adminLog()`, `uploadedFile()` (ตรวจขนาด + signature ไฟล์), ฟังก์ชันวันที่ (Asia/Bangkok)
+- งานที่ต้องสำเร็จพร้อมกันหลายคำสั่ง (เช่น การกระทำของแอดมิน + `admin_logs`, เปลี่ยนสถานะ + แจ้งเตือน) ให้ทำใน function node ด้วย `await sj.tx(async (db) => { ... })` แล้ว `throw sj.httpError(status, code, message)` เมื่อผิดเงื่อนไข (rollback อัตโนมัติ) ส่วน query ธรรมดาใช้ mysql node ตามเดิม
 - subflow กลาง: `auth-check` (ตรวจ JWT + role), `session-user` (ข้อมูลผู้ใช้ที่ส่งให้ frontend), `error-response` (รูปแบบ error เดียวทั้งระบบ)
 - รูปแบบใน function node: อ่าน input จาก `msg.req.body` / `msg.req.query`, เก็บค่าระหว่างทางใน `msg.ctx`, ถ้าผิดให้เรียก `fail(status, code, message)` แล้ว catch node ของแท็บจะตอบ error ให้
 - ทุก query ใช้ `?` เสมอ และใส่เงื่อนไขความเป็นเจ้าของ (เช่น `WHERE user_id = ?` จาก `msg.user.id`) ใน query
@@ -60,6 +62,7 @@ npm start                   # http://localhost:4200  (หรือ `ionic serve`
 ## ทดสอบ
 
 ```bash
-bash tests/api/auth.sh          # API: auth / onboarding / upload / geo (ต้องเปิด docker ไว้)
+bash tests/api/auth.sh          # Phase 1: auth / onboarding / upload / geo (ต้องเปิด docker ไว้)
+bash tests/api/shop.sh          # Phase 2: โปรไฟล์ร้าน / เอกสารยืนยัน / แอดมินยืนยัน-ปฏิเสธ / audit log
 cd frontend && npx ng test --watch=false && npx ng lint
 ```

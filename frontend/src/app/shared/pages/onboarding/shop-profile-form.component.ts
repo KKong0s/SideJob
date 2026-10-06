@@ -1,29 +1,40 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IonButton, IonIcon, IonInput, IonNote, IonSpinner, IonTextarea, ModalController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { chevronDown } from 'ionicons/icons';
 
 import { openGeoPicker } from '../../components/geo-picker/geo-picker.component';
-import { SessionUser } from '../../models/session.model';
+import { SessionUser, ShopProfileInput } from '../../models/session.model';
+import { Shop } from '../../models/shop.model';
 import { AuthService } from '../../services/auth.service';
 import { GeoService } from '../../services/geo.service';
+import { ShopService } from '../../services/shop.service';
 import { toApiError } from '../../utils/api-error';
 import { LINE_ID_PATTERN, normalisePhone, thaiPhone } from './profile-validators';
 
-/** Basic shop details. Shop photo and verification documents are added in Phase 2. */
+/**
+ * Shop details form.
+ * - onboarding mode: saves through the onboarding API and emits the session user (saved)
+ * - edit mode: pre-filled from `initial`, saves through /api/shop/profile and emits the shop (updated)
+ */
 @Component({
   selector: 'app-shop-profile-form',
   templateUrl: 'shop-profile-form.component.html',
   styleUrls: ['profile-form.scss'],
   imports: [ReactiveFormsModule, IonButton, IonIcon, IonInput, IonNote, IonSpinner, IonTextarea],
 })
-export class ShopProfileFormComponent {
+export class ShopProfileFormComponent implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly shops = inject(ShopService);
   private readonly modals = inject(ModalController);
   readonly geo = inject(GeoService);
 
+  readonly mode = input<'onboarding' | 'edit'>('onboarding');
+  readonly initial = input<Shop | null>(null);
+
   readonly saved = output<SessionUser>();
+  readonly updated = output<Shop>();
 
   readonly form = inject(FormBuilder).group({
     shopName: ['', [Validators.required, Validators.maxLength(150)]],
@@ -40,6 +51,21 @@ export class ShopProfileFormComponent {
 
   constructor() {
     addIcons({ chevronDown });
+  }
+
+  ngOnInit(): void {
+    const s = this.initial();
+    if (s) {
+      this.form.patchValue({
+        shopName: s.name,
+        address: s.address,
+        provinceId: s.provinceId,
+        districtId: s.districtId,
+        phone: s.phone ?? '',
+        lineId: s.lineId ?? '',
+        description: s.description ?? '',
+      });
+    }
   }
 
   async chooseProvince(): Promise<void> {
@@ -82,7 +108,7 @@ export class ShopProfileFormComponent {
     this.error.set('');
     try {
       const v = this.form.getRawValue();
-      const user = await this.auth.saveProfile({
+      const input: ShopProfileInput = {
         shopName: (v.shopName ?? '').trim(),
         address: (v.address ?? '').trim(),
         provinceId: v.provinceId!,
@@ -90,8 +116,12 @@ export class ShopProfileFormComponent {
         phone: normalisePhone(v.phone ?? ''),
         lineId: (v.lineId ?? '').trim() || undefined,
         description: (v.description ?? '').trim() || undefined,
-      });
-      this.saved.emit(user);
+      };
+      if (this.mode() === 'edit') {
+        this.updated.emit(await this.shops.updateProfile(input));
+      } else {
+        this.saved.emit(await this.auth.saveProfile(input));
+      }
     } catch (err) {
       this.error.set(toApiError(err).message);
     } finally {

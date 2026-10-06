@@ -53,6 +53,8 @@ module.exports = {
     jwt: require('jsonwebtoken'),
     googleAuth: require('google-auth-library'),
     crypto: require('crypto'),
+    // SideJob helpers: transactions (mysql2 pool), paging, notifications, audit log, uploads
+    sj: require('./helpers/sidejob'),
   },
   exportGlobalContextKeys: false,
 

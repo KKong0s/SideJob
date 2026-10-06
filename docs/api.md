@@ -39,8 +39,10 @@ Every error uses the same body:
 | 403 | `ADMIN_PASSWORD_ONLY` | Admin tried Google Sign-In |
 | 404 | `NOT_FOUND` | Resource does not exist (or caller may not see it) |
 | 409 | `EMAIL_TAKEN`, `ROLE_ALREADY_SET`, `PROFILE_REQUIRED`, `GOOGLE_LINK_REQUIRED`, `GOOGLE_ACCOUNT_CONFLICT`, `CONFLICT` | State conflict / duplicate |
+| 409 | `ALREADY_VERIFIED` | Shop tried to upload a verification document after being verified |
+| 409 | `INVALID_STATE` | Action not allowed in the current status (e.g. verifying a shop that is not pending) |
 | 413 | `FILE_TOO_LARGE` | Upload over 5 MB |
-| 415 | `UNSUPPORTED_FILE_TYPE` | Upload is not JPG / PNG |
+| 415 | `UNSUPPORTED_FILE_TYPE` | Upload type not allowed (images: JPG / PNG, verification documents: PDF / JPG / PNG; checked by file signature) |
 | 503 | `GOOGLE_NOT_CONFIGURED` | `GOOGLE_CLIENT_ID` is not set on the server |
 | 500 | `INTERNAL_ERROR` | Unexpected server error (details only in the Node-RED log) |
 
@@ -208,3 +210,131 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
 - Saved under a random name in `uploads/public/avatars/`; the previous avatar file is deleted.
 - **Response 200:** `{ "avatarPath": "avatars/3f1c...e9.jpg" }`
 - **Errors:** 400 `VALIDATION_ERROR`, 403 `FORBIDDEN`, 409 `PROFILE_REQUIRED`, 413 `FILE_TOO_LARGE`, 415 `UNSUPPORTED_FILE_TYPE`
+
+## Shop
+
+All `/api/shop/*` endpoints require role **shop** with onboarding completed (`403 PROFILE_INCOMPLETE` otherwise).
+Every query is scoped to the caller's own shop (`shops.owner_user_id = <JWT user>`).
+
+### Shop object (owner / admin view)
+
+```json
+{
+  "id": 3,
+  "name": "ร้านกาแฟ",
+  "description": "...",
+  "address": "1 ถนนนิมมานเหมินท์",
+  "provinceId": 38, "districtId": 5001,
+  "provinceName": "เชียงใหม่", "districtName": "เมืองเชียงใหม่",
+  "phone": "053123456", "lineId": "@cafe",
+  "imagePath": "shops/9b2e...41.jpg",
+  "verifyStatus": "pending",
+  "rejectReason": null,
+  "hasVerifyDoc": true,
+  "verifySubmittedAt": "2026-10-06 10:15:00",
+  "verifiedAt": null,
+  "createdAt": "2026-10-05 18:00:00"
+}
+```
+
+`verifyStatus`: `unsubmitted` (no document yet) → `pending` → `verified` | `rejected` (can re-submit → `pending`).
+Only `verified` shops can post jobs.
+
+### `GET /api/shop/profile`
+
+- **Role:** shop
+- **Response 200:** `{ "shop": <shop object> }`
+- **Errors:** 409 `PROFILE_REQUIRED` (no shop yet)
+
+### `PUT /api/shop/profile`
+
+- **Role:** shop
+- **Request:** same body and rules as the shop variant of `PUT /api/auth/onboarding/profile`
+  (`shopName`, `address`, `provinceId`, `districtId`, `phone`, `lineId?`, `description?`)
+- Updates general details only. The verification status is **not** reset.
+- **Response 200:** `{ "shop": <shop object> }`
+- **Errors:** 400 `VALIDATION_ERROR`, 409 `PROFILE_REQUIRED`
+
+### `POST /api/shop/profile/image`
+
+- **Role:** shop
+- **Request:** `multipart/form-data`, one file in field `file`: JPG / PNG, max 5 MB
+- Saved under a random name in `uploads/public/shops/` (publicly readable); the previous image is deleted.
+- **Response 200:** `{ "imagePath": "shops/9b2e...41.jpg" }`
+- **Errors:** 400, 409 `PROFILE_REQUIRED`, 413 `FILE_TOO_LARGE`, 415 `UNSUPPORTED_FILE_TYPE`
+
+### `POST /api/shop/verification`
+
+- **Role:** shop whose status is `unsubmitted`, `pending` or `rejected`
+- **Request:** `multipart/form-data`, one file in field `file`: PDF / JPG / PNG, max 5 MB
+- Saved under a random name in `uploads/private/verify/` (**never** served statically). Sets the status to `pending`,
+  clears the reject reason and replaces (deletes) any previous document.
+- **Response 200:** `{ "verifyStatus": "pending" }`
+- **Errors:** 400, 409 `PROFILE_REQUIRED` / `ALREADY_VERIFIED`, 413, 415
+
+## Admin
+
+All `/api/admin/*` endpoints require role **admin**. Admin actions that change data write an `admin_logs` row in the
+same database transaction: if the log cannot be written the action is rolled back.
+
+### `GET /api/admin/stats`
+
+- **Response 200:** `{ "seekers": 120, "shops": 30, "pendingShops": 4, "openJobs": 85, "applications": 410, "openReports": 2 }`
+
+### `GET /api/admin/shops`
+
+- **Query:** `status` = `pending` (default) | `verified` | `rejected` | `unsubmitted` | `all`; `q` (shop name or owner email, contains); `page`, `pageSize`
+- Order: `pending` → oldest submission first (review queue); other statuses → newest shop first.
+- **Response 200:** page of
+
+  ```json
+  { "id": 3, "name": "ร้านกาแฟ", "imagePath": null, "verifyStatus": "pending", "provinceName": "เชียงใหม่",
+    "districtName": "เมืองเชียงใหม่", "ownerEmail": "owner@example.com", "ownerStatus": "active",
+    "verifySubmittedAt": "2026-10-06 10:15:00", "createdAt": "2026-10-05 18:00:00" }
+  ```
+
+- **Errors:** 400 `VALIDATION_ERROR` (unknown status)
+
+### `GET /api/admin/shops/:id`
+
+- **Response 200:** `{ "shop": <shop object> + { "verifyDocType": "pdf" | "jpg" | "png" | null, "owner": { "id", "email", "status", "createdAt" }, "jobCount": 5, "openJobCount": 2 } }`
+- **Errors:** 404 `NOT_FOUND`
+
+### `GET /api/admin/shops/:id/document`
+
+- Streams the private verification document with its `Content-Type` (`application/pdf`, `image/jpeg`, `image/png`),
+  `Cache-Control: private, no-store`. The frontend fetches it as a blob with the admin JWT.
+- **Errors:** 404 `NOT_FOUND` (no document)
+
+### `POST /api/admin/shops/:id/verify`
+
+- **Request:** none
+- Shop must be `pending`. Sets `verified`, writes log `shop.verify`, notifies the owner (`shop.verified`, link `/shop/profile`). One transaction.
+- **Response 200:** `{ "id": 3, "verifyStatus": "verified" }`
+- **Errors:** 404 `NOT_FOUND`, 409 `INVALID_STATE`
+
+### `POST /api/admin/shops/:id/reject`
+
+- **Request:** `{ "reason": "เอกสารไม่ชัด" }` (required, 1–500 characters; shown to the shop)
+- Shop must be `pending`. Sets `rejected` + reason, writes log `shop.reject` (with the reason), notifies the owner (`shop.rejected`). One transaction.
+- **Response 200:** `{ "id": 3, "verifyStatus": "rejected", "rejectReason": "เอกสารไม่ชัด" }`
+- **Errors:** 400 `VALIDATION_ERROR`, 404 `NOT_FOUND`, 409 `INVALID_STATE`
+
+### `GET /api/admin/logs`
+
+- Read-only. There is no API to change or delete log entries (the DB user only has SELECT / INSERT on `admin_logs`).
+- **Query:** `adminId`, `action` (e.g. `shop.verify`), `targetType` (e.g. `shop`), `from`, `to` (`YYYY-MM-DD`, inclusive), `page`, `pageSize`
+- **Response 200:** page of, newest first:
+
+  ```json
+  { "id": 9, "admin": { "id": 1, "email": "admin@sidejob.local" }, "action": "shop.reject",
+    "targetType": "shop", "targetId": 3, "reason": "เอกสารไม่ชัด", "createdAt": "2026-10-06 10:20:00" }
+  ```
+
+- **Errors:** 400 `VALIDATION_ERROR` (bad id / date)
+
+### `GET /api/admin/logs/filters`
+
+- **Response 200:** `{ "admins": [{ "id": 1, "email": "admin@sidejob.local" }], "actions": ["shop.reject", "shop.verify"], "targetTypes": ["shop"] }`
+
+Log actions: `shop.verify`, `shop.reject` (Phase 2); `user.suspend`, `user.unsuspend`, `job.hide`, `report.resolve`, `report.dismiss`, `review.hide` (Phase 7).

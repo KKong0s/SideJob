@@ -2157,5 +2157,1595 @@
         "z": "tab_system",
         "x": 990,
         "y": 100
+    },
+    {
+        "id": "shop_catch",
+        "type": "catch",
+        "z": "tab_shop",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "shop_err"
+            ]
+        ]
+    },
+    {
+        "id": "shop_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_shop",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "shop_cmt_shop_profile_verification_phase_2",
+        "type": "comment",
+        "z": "tab_shop",
+        "name": "Shop profile + verification (Phase 2)",
+        "info": "",
+        "x": 170,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "shop_profile_get_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 130,
+        "name": "GET /api/shop/profile",
+        "type": "http in",
+        "url": "/api/shop/profile",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_profile_get_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_get_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 130,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_profile_get_build_own_shop_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_get_build_own_shop_query",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 130,
+        "name": "Build own shop query",
+        "type": "function",
+        "func": "const SHOP_SELECT = `SELECT s.id, s.owner_user_id, s.name, s.description, s.address, s.province_id, s.district_id,\n       p.name_th AS province_name, d.name_th AS district_name, s.phone, s.line_id, s.image_file,\n       s.verify_doc_file IS NOT NULL AS has_verify_doc, s.verify_status, s.reject_reason,\n       DATE_FORMAT(s.verify_submitted_at, '%Y-%m-%d %H:%i:%s') AS verify_submitted_at,\n       DATE_FORMAT(s.verified_at, '%Y-%m-%d %H:%i:%s') AS verified_at,\n       DATE_FORMAT(s.created_at, '%Y-%m-%d %H:%i:%s') AS created_at\nFROM shops s\nJOIN provinces p ON p.id = s.province_id\nJOIN districts d ON d.id = s.district_id`;\n\nmsg.topic = SHOP_SELECT + ' WHERE s.owner_user_id = ?';\nmsg.payload = [msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_profile_get_load_shop"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_get_load_shop",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 130,
+        "name": "Load shop",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_profile_get_format_shop_response"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_get_format_shop_response",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 130,
+        "name": "Format shop response",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Shop as returned to its owner / admins (never to seekers: phone and LINE are private)\nconst formatShop = (r) => ({\n    id: r.id,\n    name: r.name,\n    description: r.description,\n    address: r.address,\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    phone: r.phone,\n    lineId: r.line_id,\n    imagePath: r.image_file ? 'shops/' + r.image_file : null,\n    verifyStatus: r.verify_status,\n    rejectReason: r.reject_reason,\n    hasVerifyDoc: !!r.has_verify_doc,\n    verifySubmittedAt: r.verify_submitted_at,\n    verifiedAt: r.verified_at,\n    createdAt: r.created_at,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกข้อมูลร้านก่อน');\nmsg.statusCode = 200;\nmsg.payload = { shop: formatShop(row) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_profile_get_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_get_out",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 130,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_profile_put_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 190,
+        "name": "PUT /api/shop/profile",
+        "type": "http in",
+        "url": "/api/shop/profile",
+        "method": "put",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_profile_put_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 190,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_profile_put_validate_shop_profile"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_validate_shop_profile",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 190,
+        "name": "Validate shop profile",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst b = msg.payload || {};\nconst str = (v) => (typeof v === 'string' ? v.trim() : '');\nconst toId = (v) => (Number.isInteger(v) && v > 0 ? v : null);\n\nconst shopName = str(b.shopName);\nif (!shopName || shopName.length > 150) return fail(400, 'VALIDATION_ERROR', 'กรุณากรอกชื่อร้าน (ไม่เกิน 150 ตัวอักษร)');\nconst address = str(b.address);\nif (!address || address.length > 500) return fail(400, 'VALIDATION_ERROR', 'กรุณากรอกที่อยู่ร้าน (ไม่เกิน 500 ตัวอักษร)');\nconst provinceId = toId(b.provinceId);\nconst districtId = toId(b.districtId);\nif (!provinceId || !districtId) return fail(400, 'VALIDATION_ERROR', 'กรุณาเลือกจังหวัดและอำเภอ');\nconst phone = str(b.phone).replace(/[\\s-]/g, '');\nif (!/^0\\d{8,9}$/.test(phone)) return fail(400, 'VALIDATION_ERROR', 'เบอร์โทรไม่ถูกต้อง');\nconst lineId = str(b.lineId);\nif (lineId && !/^@?[A-Za-z0-9._-]{1,50}$/.test(lineId)) return fail(400, 'VALIDATION_ERROR', 'LINE ID ไม่ถูกต้อง');\nconst description = str(b.description);\nif (description.length > 2000) return fail(400, 'VALIDATION_ERROR', 'รายละเอียดร้านยาวเกิน 2000 ตัวอักษร');\n\nmsg.ctx = { shopName, address, provinceId, districtId, phone, lineId: lineId || null, description: description || null };\nmsg.topic = 'SELECT id FROM districts WHERE id = ? AND province_id = ?';\nmsg.payload = [districtId, provinceId];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_profile_put_check_district_in_province"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_check_district_in_province",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 190,
+        "name": "Check district in province",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_profile_put_build_shop_update"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_build_shop_update",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 190,
+        "name": "Build shop update",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nif (!msg.payload.length) return fail(400, 'VALIDATION_ERROR', 'อำเภอไม่อยู่ในจังหวัดที่เลือก');\nconst c = msg.ctx;\n// Verification status is kept: general details can change without re-verifying\nmsg.topic = `UPDATE shops SET name = ?, description = ?, address = ?, province_id = ?, district_id = ?, phone = ?, line_id = ?\n        WHERE owner_user_id = ?`;\nmsg.payload = [c.shopName, c.description, c.address, c.provinceId, c.districtId, c.phone, c.lineId, msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_profile_put_save_shop"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_save_shop",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 190,
+        "name": "Save shop",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_profile_put_build_own_shop_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_build_own_shop_query",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 190,
+        "name": "Build own shop query",
+        "type": "function",
+        "func": "const SHOP_SELECT = `SELECT s.id, s.owner_user_id, s.name, s.description, s.address, s.province_id, s.district_id,\n       p.name_th AS province_name, d.name_th AS district_name, s.phone, s.line_id, s.image_file,\n       s.verify_doc_file IS NOT NULL AS has_verify_doc, s.verify_status, s.reject_reason,\n       DATE_FORMAT(s.verify_submitted_at, '%Y-%m-%d %H:%i:%s') AS verify_submitted_at,\n       DATE_FORMAT(s.verified_at, '%Y-%m-%d %H:%i:%s') AS verified_at,\n       DATE_FORMAT(s.created_at, '%Y-%m-%d %H:%i:%s') AS created_at\nFROM shops s\nJOIN provinces p ON p.id = s.province_id\nJOIN districts d ON d.id = s.district_id`;\n\nmsg.topic = SHOP_SELECT + ' WHERE s.owner_user_id = ?';\nmsg.payload = [msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_profile_put_load_shop"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_load_shop",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 190,
+        "name": "Load shop",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_profile_put_format_shop_response"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_format_shop_response",
+        "z": "tab_shop",
+        "x": 1830,
+        "y": 190,
+        "name": "Format shop response",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Shop as returned to its owner / admins (never to seekers: phone and LINE are private)\nconst formatShop = (r) => ({\n    id: r.id,\n    name: r.name,\n    description: r.description,\n    address: r.address,\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    phone: r.phone,\n    lineId: r.line_id,\n    imagePath: r.image_file ? 'shops/' + r.image_file : null,\n    verifyStatus: r.verify_status,\n    rejectReason: r.reject_reason,\n    hasVerifyDoc: !!r.has_verify_doc,\n    verifySubmittedAt: r.verify_submitted_at,\n    verifiedAt: r.verified_at,\n    createdAt: r.created_at,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกข้อมูลร้านก่อน');\nmsg.statusCode = 200;\nmsg.payload = { shop: formatShop(row) };\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_profile_put_out"
+            ]
+        ]
+    },
+    {
+        "id": "shop_profile_put_out",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 190,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_image_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 250,
+        "name": "POST /api/shop/profile/image",
+        "type": "http in",
+        "url": "/api/shop/profile/image",
+        "method": "post",
+        "upload": true,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_image_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 250,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_image_validate_image_jpg_png_5_mb"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_validate_image_jpg_png_5_mb",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 250,
+        "name": "Validate image (jpg/png, 5 MB)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\ntry {\n    const file = sj.uploadedFile(msg.req, ['jpg', 'png']);\n    msg.ctx = { fileName: sj.randomFileName(file.ext), buffer: file.buffer };\n    msg.topic = 'SELECT image_file FROM shops WHERE owner_user_id = ?';\n    msg.payload = [msg.user.id];\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_image_load_current_image"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_load_current_image",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 250,
+        "name": "Load current image",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_image_prepare_file_write"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_prepare_file_write",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 250,
+        "name": "Prepare file write",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst row = msg.payload[0];\nif (!row) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกข้อมูลร้านก่อน');\nmsg.ctx.oldFile = row.image_file;\nmsg.filename = '/data/uploads/public/shops/' + msg.ctx.fileName;\nmsg.payload = msg.ctx.buffer;\ndelete msg.ctx.buffer;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_image_write_shop_image"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_write_shop_image",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 250,
+        "name": "Write shop image",
+        "type": "file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "wires": [
+            [
+                "shop_image_build_image_update"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_build_image_update",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 250,
+        "name": "Build image update",
+        "type": "function",
+        "func": "msg.topic = 'UPDATE shops SET image_file = ? WHERE owner_user_id = ?';\nmsg.payload = [msg.ctx.fileName, msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_image_save_image_file_name"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_save_image_file_name",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 250,
+        "name": "Save image file name",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_image_respond_remove_old_file"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_respond_remove_old_file_b",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 300,
+        "name": "Delete old image",
+        "type": "file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": false,
+        "overwriteFile": "delete",
+        "encoding": "none",
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "shop_image_respond_remove_old_file",
+        "z": "tab_shop",
+        "x": 1830,
+        "y": 250,
+        "name": "Respond, remove old file",
+        "type": "function",
+        "func": "const oldFile = msg.ctx.oldFile;\nmsg.statusCode = 200;\nmsg.payload = { imagePath: 'shops/' + msg.ctx.fileName };\nconst cleanup = oldFile ? { filename: '/data/uploads/public/shops/' + oldFile } : null;\nreturn [msg, cleanup];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_image_out"
+            ],
+            [
+                "shop_image_respond_remove_old_file_b"
+            ]
+        ]
+    },
+    {
+        "id": "shop_image_out",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 250,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_verify_doc_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 360,
+        "name": "POST /api/shop/verification",
+        "type": "http in",
+        "url": "/api/shop/verification",
+        "method": "post",
+        "upload": true,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_verify_doc_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 360,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_verify_doc_validate_document_pdf_jpg_png_5_mb"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_validate_document_pdf_jpg_png_5_mb",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 360,
+        "name": "Validate document (pdf/jpg/png, 5 MB)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\ntry {\n    const file = sj.uploadedFile(msg.req, ['pdf', 'jpg', 'png']);\n    msg.ctx = { fileName: sj.randomFileName(file.ext), buffer: file.buffer };\n    msg.topic = 'SELECT verify_status, verify_doc_file FROM shops WHERE owner_user_id = ?';\n    msg.payload = [msg.user.id];\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_verify_doc_load_verification_state"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_load_verification_state",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 360,
+        "name": "Load verification state",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_verify_doc_check_state_prepare_private_write"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_check_state_prepare_private_write",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 360,
+        "name": "Check state, prepare private write",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst row = msg.payload[0];\nif (!row) return fail(409, 'PROFILE_REQUIRED', 'กรุณากรอกข้อมูลร้านก่อน');\nif (row.verify_status === 'verified') return fail(409, 'ALREADY_VERIFIED', 'ร้านของคุณผ่านการยืนยันแล้ว');\nmsg.ctx.oldFile = row.verify_doc_file;\n// Private folder: never served statically, admins read it through /api/admin/shops/:id/document\nmsg.filename = '/data/uploads/private/verify/' + msg.ctx.fileName;\nmsg.payload = msg.ctx.buffer;\ndelete msg.ctx.buffer;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_verify_doc_write_document_private"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_write_document_private",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 360,
+        "name": "Write document (private)",
+        "type": "file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "wires": [
+            [
+                "shop_verify_doc_build_submit_query"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_build_submit_query",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 360,
+        "name": "Build submit query",
+        "type": "function",
+        "func": "msg.topic = `UPDATE shops SET verify_doc_file = ?, verify_status = 'pending', reject_reason = NULL, verify_submitted_at = NOW()\n        WHERE owner_user_id = ? AND verify_status <> 'verified'`;\nmsg.payload = [msg.ctx.fileName, msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_verify_doc_submit_for_verification"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_submit_for_verification",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 360,
+        "name": "Submit for verification",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_verify_doc_respond_remove_replaced_file"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_respond_remove_replaced_file_b",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 410,
+        "name": "Delete replaced document",
+        "type": "file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": false,
+        "overwriteFile": "delete",
+        "encoding": "none",
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "shop_verify_doc_respond_remove_replaced_file",
+        "z": "tab_shop",
+        "x": 1830,
+        "y": 360,
+        "name": "Respond, remove replaced file",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst dir = '/data/uploads/private/verify/';\nif (!msg.payload.affectedRows) {\n    // Verified in the meantime: drop the file we just wrote\n    node.send([null, { filename: dir + msg.ctx.fileName }]);\n    return fail(409, 'ALREADY_VERIFIED', 'ร้านของคุณผ่านการยืนยันแล้ว');\n}\nconst oldFile = msg.ctx.oldFile;\nmsg.statusCode = 200;\nmsg.payload = { verifyStatus: 'pending' };\nreturn [msg, oldFile ? { filename: dir + oldFile } : null];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_verify_doc_out"
+            ],
+            [
+                "shop_verify_doc_respond_remove_replaced_file_b"
+            ]
+        ]
+    },
+    {
+        "id": "shop_verify_doc_out",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 360,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_catch",
+        "type": "catch",
+        "z": "tab_admin",
+        "name": "Catch errors in this tab",
+        "scope": null,
+        "uncaught": false,
+        "x": 1250,
+        "y": 40,
+        "wires": [
+            [
+                "admin_err"
+            ]
+        ]
+    },
+    {
+        "id": "admin_err",
+        "type": "subflow:sf_error_response",
+        "z": "tab_admin",
+        "name": "error-response",
+        "env": [],
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "admin_cmt_dashboard_shop_verification_phase_2",
+        "type": "comment",
+        "z": "tab_admin",
+        "name": "Dashboard + shop verification (Phase 2)",
+        "info": "",
+        "x": 170,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "admin_stats_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 130,
+        "name": "GET /api/admin/stats",
+        "type": "http in",
+        "url": "/api/admin/stats",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_stats_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_stats_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 130,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_stats_build_stats_query"
+            ]
+        ]
+    },
+    {
+        "id": "admin_stats_build_stats_query",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 130,
+        "name": "Build stats query",
+        "type": "function",
+        "func": "msg.topic = `SELECT\n        (SELECT COUNT(*) FROM users WHERE role = 'seeker') AS seekers,\n        (SELECT COUNT(*) FROM shops) AS shops,\n        (SELECT COUNT(*) FROM shops WHERE verify_status = 'pending') AS pending_shops,\n        (SELECT COUNT(*) FROM jobs WHERE status = 'open' AND expires_on >= CURDATE()) AS open_jobs,\n        (SELECT COUNT(*) FROM applications) AS applications,\n        (SELECT COUNT(*) FROM reports WHERE status = 'open') AS open_reports`;\nmsg.payload = [];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_stats_count"
+            ]
+        ]
+    },
+    {
+        "id": "admin_stats_count",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 130,
+        "name": "Count",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "admin_stats_format_stats"
+            ]
+        ]
+    },
+    {
+        "id": "admin_stats_format_stats",
+        "z": "tab_admin",
+        "x": 990,
+        "y": 130,
+        "name": "Format stats",
+        "type": "function",
+        "func": "const r = msg.payload[0];\nmsg.statusCode = 200;\nmsg.payload = {\n    seekers: r.seekers,\n    shops: r.shops,\n    pendingShops: r.pending_shops,\n    openJobs: r.open_jobs,\n    applications: r.applications,\n    openReports: r.open_reports,\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_stats_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_stats_out",
+        "z": "tab_admin",
+        "x": 1200,
+        "y": 130,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_shops_list_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 190,
+        "name": "GET /api/admin/shops",
+        "type": "http in",
+        "url": "/api/admin/shops",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_shops_list_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shops_list_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 190,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_shops_list_build_shop_list_query"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shops_list_build_shop_list_query",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 190,
+        "name": "Build shop list query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\nconst q = msg.req.query;\nconst p = (msg.ctx = sj.paging(q));\nconst statuses = ['unsubmitted', 'pending', 'verified', 'rejected'];\nconst status = q.status || 'pending';\nif (status !== 'all' && !statuses.includes(status)) return fail(400, 'VALIDATION_ERROR', 'สถานะไม่ถูกต้อง');\n\nconst where = [];\nconst params = [];\nif (status !== 'all') {\n    where.push('s.verify_status = ?');\n    params.push(status);\n}\nconst text = typeof q.q === 'string' ? q.q.trim().slice(0, 100) : '';\nif (text) {\n    const like = '%' + text.replace(/[\\\\%_]/g, (c) => '\\\\' + c) + '%';\n    where.push('(s.name LIKE ? OR u.email LIKE ?)');\n    params.push(like, like);\n}\n// Pending queue: oldest submission first; other lists: newest shop first\nconst order = status === 'pending' ? 's.verify_submitted_at ASC, s.id ASC' : 's.created_at DESC, s.id DESC';\nmsg.topic = `SELECT s.id, s.name, s.image_file, s.verify_status, p.name_th AS province_name, d.name_th AS district_name,\n             u.email AS owner_email, u.status AS owner_status,\n             DATE_FORMAT(s.verify_submitted_at, '%Y-%m-%d %H:%i:%s') AS verify_submitted_at,\n             DATE_FORMAT(s.created_at, '%Y-%m-%d %H:%i:%s') AS created_at\n        FROM shops s\n        JOIN users u ON u.id = s.owner_user_id\n        JOIN provinces p ON p.id = s.province_id\n        JOIN districts d ON d.id = s.district_id\n        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}\n        ORDER BY ${order}\n        LIMIT ? OFFSET ?`;\nmsg.payload = [...params, p.limit, p.offset];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shops_list_load_shops"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shops_list_load_shops",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 190,
+        "name": "Load shops",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "admin_shops_list_format_shop_list"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shops_list_format_shop_list",
+        "z": "tab_admin",
+        "x": 990,
+        "y": 190,
+        "name": "Format shop list",
+        "type": "function",
+        "func": "const sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, (r) => ({\n    id: r.id,\n    name: r.name,\n    imagePath: r.image_file ? 'shops/' + r.image_file : null,\n    verifyStatus: r.verify_status,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    ownerEmail: r.owner_email,\n    ownerStatus: r.owner_status,\n    verifySubmittedAt: r.verify_submitted_at,\n    createdAt: r.created_at,\n}));\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shops_list_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shops_list_out",
+        "z": "tab_admin",
+        "x": 1200,
+        "y": 190,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_shop_get_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 250,
+        "name": "GET /api/admin/shops/:id",
+        "type": "http in",
+        "url": "/api/admin/shops/:id",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_shop_get_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_get_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 250,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_shop_get_build_shop_detail_query"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_get_build_shop_detail_query",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 250,
+        "name": "Build shop detail query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nconst SHOP_SELECT = `SELECT s.id, s.owner_user_id, s.name, s.description, s.address, s.province_id, s.district_id,\n       p.name_th AS province_name, d.name_th AS district_name, s.phone, s.line_id, s.image_file,\n       s.verify_doc_file IS NOT NULL AS has_verify_doc, s.verify_status, s.reject_reason,\n       DATE_FORMAT(s.verify_submitted_at, '%Y-%m-%d %H:%i:%s') AS verify_submitted_at,\n       DATE_FORMAT(s.verified_at, '%Y-%m-%d %H:%i:%s') AS verified_at,\n       DATE_FORMAT(s.created_at, '%Y-%m-%d %H:%i:%s') AS created_at\nFROM shops s\nJOIN provinces p ON p.id = s.province_id\nJOIN districts d ON d.id = s.district_id`;\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบร้านนี้');\nmsg.topic = `${SHOP_SELECT} WHERE s.id = ?;\n        SELECT u.id, u.email, u.status, DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n                     s.verify_doc_file\n        FROM shops s JOIN users u ON u.id = s.owner_user_id WHERE s.id = ?;\n        SELECT COUNT(*) AS jobs, COALESCE(SUM(status = 'open'), 0) AS open_jobs FROM jobs WHERE shop_id = ?`;\nmsg.payload = [id, id, id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shop_get_load_shop_owner"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_get_load_shop_owner",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 250,
+        "name": "Load shop + owner",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "admin_shop_get_format_shop_detail"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_get_format_shop_detail",
+        "z": "tab_admin",
+        "x": 990,
+        "y": 250,
+        "name": "Format shop detail",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Shop as returned to its owner / admins (never to seekers: phone and LINE are private)\nconst formatShop = (r) => ({\n    id: r.id,\n    name: r.name,\n    description: r.description,\n    address: r.address,\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    phone: r.phone,\n    lineId: r.line_id,\n    imagePath: r.image_file ? 'shops/' + r.image_file : null,\n    verifyStatus: r.verify_status,\n    rejectReason: r.reject_reason,\n    hasVerifyDoc: !!r.has_verify_doc,\n    verifySubmittedAt: r.verify_submitted_at,\n    verifiedAt: r.verified_at,\n    createdAt: r.created_at,\n});\n\nconst [[row], [owner], [counts]] = msg.payload;\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบร้านนี้');\nconst doc = owner.verify_doc_file;\nmsg.statusCode = 200;\nmsg.payload = {\n    shop: {\n        ...formatShop(row),\n        verifyDocType: doc ? doc.split('.').pop() : null,\n        owner: { id: owner.id, email: owner.email, status: owner.status, createdAt: owner.created_at },\n        jobCount: Number(counts.jobs),\n        openJobCount: Number(counts.open_jobs),\n    },\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shop_get_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_get_out",
+        "z": "tab_admin",
+        "x": 1200,
+        "y": 250,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_shop_doc_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 310,
+        "name": "GET /api/admin/shops/:id/document",
+        "type": "http in",
+        "url": "/api/admin/shops/:id/document",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_shop_doc_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_doc_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 310,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_shop_doc_build_document_query"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_doc_build_document_query",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 310,
+        "name": "Build document query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบเอกสาร');\nmsg.topic = 'SELECT verify_doc_file FROM shops WHERE id = ?';\nmsg.payload = [id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shop_doc_load_document_name"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_doc_load_document_name",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 310,
+        "name": "Load document name",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "admin_shop_doc_locate_private_file"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_doc_locate_private_file",
+        "z": "tab_admin",
+        "x": 990,
+        "y": 310,
+        "name": "Locate private file",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst file = msg.payload[0] && msg.payload[0].verify_doc_file;\nif (!file) return fail(404, 'NOT_FOUND', 'ร้านนี้ยังไม่ได้อัปโหลดเอกสาร');\n// File names are random hex generated by the server, never user input\nif (!/^[a-f0-9]{32}\\.(pdf|jpg|png)$/.test(file)) return fail(404, 'NOT_FOUND', 'ไม่พบเอกสาร');\nmsg.ctx = { ext: file.split('.').pop() };\nmsg.filename = '/data/uploads/private/verify/' + file;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shop_doc_read_document"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_doc_read_document",
+        "z": "tab_admin",
+        "x": 1200,
+        "y": 310,
+        "name": "Read document",
+        "type": "file in",
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "wires": [
+            [
+                "admin_shop_doc_set_file_headers"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_doc_set_file_headers",
+        "z": "tab_admin",
+        "x": 1410,
+        "y": 310,
+        "name": "Set file headers",
+        "type": "function",
+        "func": "const types = { pdf: 'application/pdf', jpg: 'image/jpeg', png: 'image/png' };\nmsg.statusCode = 200;\nmsg.headers = {\n    'Content-Type': types[msg.ctx.ext],\n    'Content-Disposition': `inline; filename=\"verification.${msg.ctx.ext}\"`,\n    'Cache-Control': 'private, no-store',\n    'X-Content-Type-Options': 'nosniff',\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shop_doc_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_doc_out",
+        "z": "tab_admin",
+        "x": 1620,
+        "y": 310,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_shop_verify_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 370,
+        "name": "POST /api/admin/shops/:id/verify",
+        "type": "http in",
+        "url": "/api/admin/shops/:id/verify",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_shop_verify_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_verify_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 370,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_shop_verify_verify_shop_log_notify_transaction"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_verify_verify_shop_log_notify_transaction",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 370,
+        "name": "Verify shop + log + notify (transaction)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\ntry {\n    const id = routeId();\n    if (!id) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบร้านนี้');\n    await sj.tx(async (db) => {\n        const [[shop]] = await db.query('SELECT id, owner_user_id, name, verify_status FROM shops WHERE id = ? FOR UPDATE', [id]);\n        if (!shop) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบร้านนี้');\n        if (shop.verify_status !== 'pending') throw sj.httpError(409, 'INVALID_STATE', 'ร้านนี้ไม่ได้อยู่ในสถานะรอยืนยัน');\n        await db.query(\"UPDATE shops SET verify_status = 'verified', verified_at = NOW(), reject_reason = NULL WHERE id = ?\", [id]);\n        await sj.adminLog(db, msg.user.id, 'shop.verify', 'shop', id, null);\n        await sj.notify(db, shop.owner_user_id, 'shop.verified', `ร้าน ${shop.name} ผ่านการยืนยันแล้ว เริ่มโพสต์ประกาศงานได้เลย`, '/shop/profile');\n    });\n    msg.statusCode = 200;\n    msg.payload = { id, verifyStatus: 'verified' };\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shop_verify_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_verify_out",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 370,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_shop_reject_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 430,
+        "name": "POST /api/admin/shops/:id/reject",
+        "type": "http in",
+        "url": "/api/admin/shops/:id/reject",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_shop_reject_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_reject_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 430,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_shop_reject_reject_shop_log_notify_transaction"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_reject_reject_shop_log_notify_transaction",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 430,
+        "name": "Reject shop + log + notify (transaction)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\ntry {\n    const id = routeId();\n    if (!id) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบร้านนี้');\n    const reason = typeof (msg.payload || {}).reason === 'string' ? msg.payload.reason.trim() : '';\n    if (!reason || reason.length > 500) throw sj.httpError(400, 'VALIDATION_ERROR', 'กรุณากรอกเหตุผลที่ปฏิเสธ (ไม่เกิน 500 ตัวอักษร)');\n    await sj.tx(async (db) => {\n        const [[shop]] = await db.query('SELECT id, owner_user_id, name, verify_status FROM shops WHERE id = ? FOR UPDATE', [id]);\n        if (!shop) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบร้านนี้');\n        if (shop.verify_status !== 'pending') throw sj.httpError(409, 'INVALID_STATE', 'ร้านนี้ไม่ได้อยู่ในสถานะรอยืนยัน');\n        await db.query(\"UPDATE shops SET verify_status = 'rejected', reject_reason = ?, verified_at = NULL WHERE id = ?\", [reason, id]);\n        await sj.adminLog(db, msg.user.id, 'shop.reject', 'shop', id, reason);\n        await sj.notify(db, shop.owner_user_id, 'shop.rejected', `ร้าน ${shop.name} ไม่ผ่านการยืนยัน: ${reason}`, '/shop/profile');\n    });\n    msg.statusCode = 200;\n    msg.payload = { id, verifyStatus: 'rejected', rejectReason: reason };\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_shop_reject_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_shop_reject_out",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 430,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_cmt_audit_log_read_only_no_update_delete_api",
+        "type": "comment",
+        "z": "tab_admin",
+        "name": "Audit log (read-only: no update / delete API)",
+        "info": "",
+        "x": 170,
+        "y": 510,
+        "wires": []
+    },
+    {
+        "id": "admin_logs_list_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 560,
+        "name": "GET /api/admin/logs",
+        "type": "http in",
+        "url": "/api/admin/logs",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_logs_list_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_list_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 560,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_logs_list_build_log_query"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_list_build_log_query",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 560,
+        "name": "Build log query",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\nconst q = msg.req.query;\nconst p = (msg.ctx = sj.paging(q));\nconst where = [];\nconst params = [];\nif (q.adminId) {\n    if (!/^\\d+$/.test(q.adminId)) return fail(400, 'VALIDATION_ERROR', 'adminId ไม่ถูกต้อง');\n    where.push('l.admin_user_id = ?');\n    params.push(Number(q.adminId));\n}\nif (q.action) {\n    where.push('l.action = ?');\n    params.push(String(q.action).slice(0, 50));\n}\nif (q.targetType) {\n    where.push('l.target_type = ?');\n    params.push(String(q.targetType).slice(0, 30));\n}\nif (q.from) {\n    if (!sj.parseDate(q.from)) return fail(400, 'VALIDATION_ERROR', 'วันที่เริ่มต้นไม่ถูกต้อง');\n    where.push('l.created_at >= ?');\n    params.push(q.from + ' 00:00:00');\n}\nif (q.to) {\n    if (!sj.parseDate(q.to)) return fail(400, 'VALIDATION_ERROR', 'วันที่สิ้นสุดไม่ถูกต้อง');\n    where.push('l.created_at < ?');\n    params.push(sj.addDays(q.to, 1) + ' 00:00:00');\n}\nmsg.topic = `SELECT l.id, l.admin_user_id, u.email AS admin_email, l.action, l.target_type, l.target_id, l.reason,\n             DATE_FORMAT(l.created_at, '%Y-%m-%d %H:%i:%s') AS created_at\n        FROM admin_logs l JOIN users u ON u.id = l.admin_user_id\n        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}\n        ORDER BY l.created_at DESC, l.id DESC\n        LIMIT ? OFFSET ?`;\nmsg.payload = [...params, p.limit, p.offset];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_logs_list_load_logs"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_list_load_logs",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 560,
+        "name": "Load logs",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "admin_logs_list_format_logs"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_list_format_logs",
+        "z": "tab_admin",
+        "x": 990,
+        "y": 560,
+        "name": "Format logs",
+        "type": "function",
+        "func": "const sj = global.get('sj');\nmsg.statusCode = 200;\nmsg.payload = sj.pageResult(msg.payload, msg.ctx, (r) => ({\n    id: r.id,\n    admin: { id: r.admin_user_id, email: r.admin_email },\n    action: r.action,\n    targetType: r.target_type,\n    targetId: r.target_id,\n    reason: r.reason,\n    createdAt: r.created_at,\n}));\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_logs_list_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_list_out",
+        "z": "tab_admin",
+        "x": 1200,
+        "y": 560,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "admin_logs_filters_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 620,
+        "name": "GET /api/admin/logs/filters",
+        "type": "http in",
+        "url": "/api/admin/logs/filters",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_logs_filters_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_filters_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 620,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_logs_filters_build_filter_options_query"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_filters_build_filter_options_query",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 620,
+        "name": "Build filter options query",
+        "type": "function",
+        "func": "msg.topic = `SELECT id, email FROM users WHERE role = 'admin' ORDER BY email;\n        SELECT DISTINCT action FROM admin_logs ORDER BY action;\n        SELECT DISTINCT target_type FROM admin_logs ORDER BY target_type`;\nmsg.payload = [];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_logs_filters_load_filter_options"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_filters_load_filter_options",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 620,
+        "name": "Load filter options",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "admin_logs_filters_format_filter_options"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_filters_format_filter_options",
+        "z": "tab_admin",
+        "x": 990,
+        "y": 620,
+        "name": "Format filter options",
+        "type": "function",
+        "func": "const [admins, actions, types] = msg.payload;\nmsg.statusCode = 200;\nmsg.payload = {\n    admins: admins.map((r) => ({ id: r.id, email: r.email })),\n    actions: actions.map((r) => r.action),\n    targetTypes: types.map((r) => r.target_type),\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_logs_filters_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_logs_filters_out",
+        "z": "tab_admin",
+        "x": 1200,
+        "y": 620,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
     }
 ]
