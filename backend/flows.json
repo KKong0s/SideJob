@@ -4051,7 +4051,7 @@
         "y": 600,
         "name": "Build own job query",
         "type": "function",
-        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\nconst id = Number(msg.req.params.id);\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?';\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\n// Sample photos of a job (max 5, public files in uploads/public/jobs)\nconst OWN_JOB_IMAGES = `SELECT i.id, i.file_name FROM job_images i\nJOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\nWHERE i.job_id = ? AND s.owner_user_id = ? ORDER BY i.sort_order, i.id`;\nconst formatJobImage = (r) => ({ id: r.id, path: 'jobs/' + r.file_name });\n\nconst id = Number(msg.req.params.id);\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?; ' + OWN_JOB_IMAGES;\nmsg.payload = [id, msg.user.id, id, msg.user.id];\nreturn msg;\n\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -4060,16 +4060,16 @@
         "libs": [],
         "wires": [
             [
-                "shop_job_get_load_job"
+                "shop_job_get_load_job_images"
             ]
         ]
     },
     {
-        "id": "shop_job_get_load_job",
+        "id": "shop_job_get_load_job_images",
         "z": "tab_shop",
         "x": 990,
         "y": 600,
-        "name": "Load job",
+        "name": "Load job + images",
         "type": "mysql",
         "mydb": "cfg_mysql_sidejob",
         "wires": [
@@ -4085,7 +4085,7 @@
         "y": 600,
         "name": "Format job response",
         "type": "function",
-        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: formatOwnJob(row) };\nreturn msg;\n",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Sample photos of a job (max 5, public files in uploads/public/jobs)\nconst OWN_JOB_IMAGES = `SELECT i.id, i.file_name FROM job_images i\nJOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\nWHERE i.job_id = ? AND s.owner_user_id = ? ORDER BY i.sort_order, i.id`;\nconst formatJobImage = (r) => ({ id: r.id, path: 'jobs/' + r.file_name });\n\nconst [[row], images] = msg.payload;\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: { ...formatOwnJob(row), images: images.map(formatJobImage) } };\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -4246,7 +4246,7 @@
         "y": 660,
         "name": "Build own job query",
         "type": "function",
-        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\nconst id = msg.ctx.jobId;\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?';\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\n// Sample photos of a job (max 5, public files in uploads/public/jobs)\nconst OWN_JOB_IMAGES = `SELECT i.id, i.file_name FROM job_images i\nJOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\nWHERE i.job_id = ? AND s.owner_user_id = ? ORDER BY i.sort_order, i.id`;\nconst formatJobImage = (r) => ({ id: r.id, path: 'jobs/' + r.file_name });\n\nconst id = msg.ctx.jobId;\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?; ' + OWN_JOB_IMAGES;\nmsg.payload = [id, msg.user.id, id, msg.user.id];\nreturn msg;\n\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -4255,16 +4255,16 @@
         "libs": [],
         "wires": [
             [
-                "shop_job_create_load_job"
+                "shop_job_create_load_job_images"
             ]
         ]
     },
     {
-        "id": "shop_job_create_load_job",
+        "id": "shop_job_create_load_job_images",
         "z": "tab_shop",
         "x": 1830,
         "y": 660,
-        "name": "Load job",
+        "name": "Load job + images",
         "type": "mysql",
         "mydb": "cfg_mysql_sidejob",
         "wires": [
@@ -4280,7 +4280,7 @@
         "y": 660,
         "name": "Format job response",
         "type": "function",
-        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: formatOwnJob(row) };\nreturn msg;\n",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Sample photos of a job (max 5, public files in uploads/public/jobs)\nconst OWN_JOB_IMAGES = `SELECT i.id, i.file_name FROM job_images i\nJOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\nWHERE i.job_id = ? AND s.owner_user_id = ? ORDER BY i.sort_order, i.id`;\nconst formatJobImage = (r) => ({ id: r.id, path: 'jobs/' + r.file_name });\n\nconst [[row], images] = msg.payload;\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: { ...formatOwnJob(row), images: images.map(formatJobImage) } };\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -4421,7 +4421,7 @@
         "y": 720,
         "name": "Build own job query",
         "type": "function",
-        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\nconst id = msg.ctx.jobId;\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?';\nmsg.payload = [id, msg.user.id];\nreturn msg;\n\n",
+        "func": "// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\nconst OWN_JOB_SELECT = `SELECT ${JOB_COLUMNS},\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status <> 'cancelled') AS applicant_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status = 'pending') AS pending_count,\n       (SELECT COUNT(*) FROM applications a WHERE a.job_id = j.id AND a.status IN ('pending', 'accepted', 'completed')) AS active_count\nFROM jobs j\nJOIN shops s ON s.id = j.shop_id\n${JOB_JOINS}`;\n\n// Sample photos of a job (max 5, public files in uploads/public/jobs)\nconst OWN_JOB_IMAGES = `SELECT i.id, i.file_name FROM job_images i\nJOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\nWHERE i.job_id = ? AND s.owner_user_id = ? ORDER BY i.sort_order, i.id`;\nconst formatJobImage = (r) => ({ id: r.id, path: 'jobs/' + r.file_name });\n\nconst id = msg.ctx.jobId;\nmsg.topic = OWN_JOB_SELECT + ' WHERE j.id = ? AND s.owner_user_id = ?; ' + OWN_JOB_IMAGES;\nmsg.payload = [id, msg.user.id, id, msg.user.id];\nreturn msg;\n\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -4430,16 +4430,16 @@
         "libs": [],
         "wires": [
             [
-                "shop_job_update_load_job"
+                "shop_job_update_load_job_images"
             ]
         ]
     },
     {
-        "id": "shop_job_update_load_job",
+        "id": "shop_job_update_load_job_images",
         "z": "tab_shop",
         "x": 1620,
         "y": 720,
-        "name": "Load job",
+        "name": "Load job + images",
         "type": "mysql",
         "mydb": "cfg_mysql_sidejob",
         "wires": [
@@ -4455,7 +4455,7 @@
         "y": 720,
         "name": "Format job response",
         "type": "function",
-        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: formatOwnJob(row) };\nreturn msg;\n",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Sample photos of a job (max 5, public files in uploads/public/jobs)\nconst OWN_JOB_IMAGES = `SELECT i.id, i.file_name FROM job_images i\nJOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\nWHERE i.job_id = ? AND s.owner_user_id = ? ORDER BY i.sort_order, i.id`;\nconst formatJobImage = (r) => ({ id: r.id, path: 'jobs/' + r.file_name });\n\nconst [[row], images] = msg.payload;\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nmsg.statusCode = msg.ctx && msg.ctx.created ? 201 : 200;\nmsg.payload = { job: { ...formatOwnJob(row), images: images.map(formatJobImage) } };\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -4997,7 +4997,7 @@
         "y": 380,
         "name": "Build job detail query",
         "type": "function",
-        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n// Closed / expired jobs stay readable (saved jobs, applications) but are not accepting applications.\n// Hidden jobs and jobs of suspended or unverified shops are not shown at all.\nmsg.topic = `SELECT ${JOB_COLUMNS}, (${VISIBLE}) AS accepting,\n                     s.name AS shop_name, s.image_file AS shop_image, s.description AS shop_description, s.address AS shop_address,\n                     sp.name_th AS shop_province, sd.name_th AS shop_district, s.province_id AS shop_province_id\n        FROM jobs j ${SHOP_JOINS} ${JOB_JOINS}\n        JOIN provinces sp ON sp.id = s.province_id\n        JOIN districts sd ON sd.id = s.district_id\n        WHERE j.id = ? AND j.status <> 'hidden' AND s.verify_status = 'verified' AND u.status = 'active'`;\nmsg.payload = [id];\nreturn msg;\n",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\n// Columns shared by every job query; dates / times formatted in SQL (Asia/Bangkok)\nconst JOB_COLUMNS = `j.id, j.shop_id, j.title, j.description, j.category_id, c.name AS category_name, c.icon AS category_icon,\n       j.province_id, j.district_id, p.name_th AS province_name, d.name_th AS district_name,\n       j.wage, j.wage_unit, j.schedule_type,\n       DATE_FORMAT(j.start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(j.end_date, '%Y-%m-%d') AS end_date, j.work_days,\n       TIME_FORMAT(j.start_time, '%H:%i') AS start_time, TIME_FORMAT(j.end_time, '%H:%i') AS end_time,\n       j.min_age, DATE_FORMAT(j.expires_on, '%Y-%m-%d') AS expires_on, j.status,\n       DATE_FORMAT(j.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,\n       DATE_FORMAT(j.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at`;\nconst JOB_JOINS = `JOIN categories c ON c.id = j.category_id\nJOIN provinces p ON p.id = j.province_id\nJOIN districts d ON d.id = j.district_id`;\n\n// A job seekers may see in search: open, not expired, schedule not over, shop verified, owner not suspended\nconst VISIBLE = `j.status = 'open' AND j.expires_on >= CURDATE()\n    AND NOT (j.schedule_type = 'dates' AND j.end_date < CURDATE())\n    AND s.verify_status = 'verified' AND u.status = 'active'`;\nconst SHOP_JOINS = `JOIN shops s ON s.id = j.shop_id\nJOIN users u ON u.id = s.owner_user_id`;\n\nconst id = routeId();\nif (!id) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n// Closed / expired jobs stay readable (saved jobs, applications) but are not accepting applications.\n// Hidden jobs and jobs of suspended or unverified shops are not shown at all.\nmsg.topic = `SELECT ${JOB_COLUMNS}, (${VISIBLE}) AS accepting,\n                     s.name AS shop_name, s.image_file AS shop_image, s.description AS shop_description, s.address AS shop_address,\n                     sp.name_th AS shop_province, sd.name_th AS shop_district, s.province_id AS shop_province_id\n        FROM jobs j ${SHOP_JOINS} ${JOB_JOINS}\n        JOIN provinces sp ON sp.id = s.province_id\n        JOIN districts sd ON sd.id = s.district_id\n        WHERE j.id = ? AND j.status <> 'hidden' AND s.verify_status = 'verified' AND u.status = 'active';\n        SELECT id, file_name FROM job_images WHERE job_id = ? ORDER BY sort_order, id`;\nmsg.payload = [id, id];\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -5006,16 +5006,16 @@
         "libs": [],
         "wires": [
             [
-                "jobs_detail_load_job"
+                "jobs_detail_load_job_images"
             ]
         ]
     },
     {
-        "id": "jobs_detail_load_job",
+        "id": "jobs_detail_load_job_images",
         "z": "tab_jobs",
         "x": 570,
         "y": 380,
-        "name": "Load job",
+        "name": "Load job + images",
         "type": "mysql",
         "mydb": "cfg_mysql_sidejob",
         "wires": [
@@ -5031,7 +5031,7 @@
         "y": 380,
         "name": "Format job detail",
         "type": "function",
-        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Public job: no shop phone / LINE (those come only with an accepted application)\nconst formatPublicJob = (r) => ({\n    ...formatJob(r),\n    acceptingApplications: !!r.accepting,\n    shop: { id: r.shop_id, name: r.shop_name, imagePath: r.shop_image ? 'shops/' + r.shop_image : null },\n});\n\nconst r = msg.payload[0];\nif (!r) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้ หรือประกาศถูกปิดไปแล้ว');\nconst job = formatPublicJob(r);\nObject.assign(job.shop, {\n    description: r.shop_description,\n    address: r.shop_address,\n    provinceId: r.shop_province_id,\n    provinceName: r.shop_province,\n    districtName: r.shop_district,\n});\nmsg.statusCode = 200;\nmsg.payload = { job };\nreturn msg;\n",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst formatJob = (r) => ({\n    id: r.id,\n    title: r.title,\n    description: r.description,\n    category: { id: r.category_id, name: r.category_name, icon: r.category_icon },\n    provinceId: r.province_id,\n    districtId: r.district_id,\n    provinceName: r.province_name,\n    districtName: r.district_name,\n    wage: Number(r.wage),\n    wageUnit: r.wage_unit,\n    scheduleType: r.schedule_type,\n    startDate: r.start_date,\n    endDate: r.end_date,\n    workDays: r.work_days ? String(r.work_days).split(',') : [],\n    startTime: r.start_time,\n    endTime: r.end_time,\n    minAge: r.min_age,\n    expiresOn: r.expires_on,\n    status: r.status,\n    createdAt: r.created_at,\n    updatedAt: r.updated_at,\n});\n// Shop owner view adds applicant counts; locked = wage / schedule can no longer change\nconst formatOwnJob = (r) => ({\n    ...formatJob(r),\n    applicantCount: Number(r.applicant_count || 0),\n    pendingCount: Number(r.pending_count || 0),\n    locked: Number(r.active_count || 0) > 0,\n});\n\n// Public job: no shop phone / LINE (those come only with an accepted application)\nconst formatPublicJob = (r) => ({\n    ...formatJob(r),\n    acceptingApplications: !!r.accepting,\n    shop: { id: r.shop_id, name: r.shop_name, imagePath: r.shop_image ? 'shops/' + r.shop_image : null },\n});\n\n// Sample photos of a job (max 5, public files in uploads/public/jobs)\nconst OWN_JOB_IMAGES = `SELECT i.id, i.file_name FROM job_images i\nJOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\nWHERE i.job_id = ? AND s.owner_user_id = ? ORDER BY i.sort_order, i.id`;\nconst formatJobImage = (r) => ({ id: r.id, path: 'jobs/' + r.file_name });\n\nconst [[r], images] = msg.payload;\nif (!r) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้ หรือประกาศถูกปิดไปแล้ว');\nconst job = formatPublicJob(r);\nObject.assign(job.shop, {\n    description: r.shop_description,\n    address: r.shop_address,\n    provinceId: r.shop_province_id,\n    provinceName: r.shop_province,\n    districtName: r.shop_district,\n});\njob.images = images.map(formatJobImage);\nmsg.statusCode = 200;\nmsg.payload = { job };\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -6441,6 +6441,377 @@
         "z": "tab_shop",
         "x": 1200,
         "y": 1210,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_cmt_job_sample_photos_max_5_per_job_own_jobs",
+        "type": "comment",
+        "z": "tab_shop",
+        "name": "Job sample photos (max 5 per job) — own jobs only",
+        "info": "",
+        "x": 170,
+        "y": 1290,
+        "wires": []
+    },
+    {
+        "id": "shop_job_image_add_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 1340,
+        "name": "POST /api/shop/jobs/:id/images",
+        "type": "http in",
+        "url": "/api/shop/jobs/:id/images",
+        "method": "post",
+        "upload": true,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_job_image_add_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 1340,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_job_image_add_validate_image_jpg_png_5_mb"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_validate_image_jpg_png_5_mb",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 1340,
+        "name": "Validate image (jpg/png, 5 MB)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst sj = global.get('sj');\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\ntry {\n    const jobId = routeId();\n    if (!jobId) throw sj.httpError(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\n    const file = sj.uploadedFile(msg.req, ['jpg', 'png']);\n    msg.ctx = { jobId, fileName: sj.randomFileName(file.ext), buffer: file.buffer };\n    msg.topic = `SELECT j.status, (SELECT COUNT(*) FROM job_images i WHERE i.job_id = j.id) AS image_count\n            FROM jobs j JOIN shops s ON s.id = j.shop_id WHERE j.id = ? AND s.owner_user_id = ?`;\n    msg.payload = [jobId, msg.user.id];\n    return msg;\n} catch (e) {\n    if (e instanceof sj.HttpError) return fail(e.status, e.code, e.message, e.details);\n    throw e;\n}\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_image_add_load_job_image_count"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_load_job_image_count",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 1340,
+        "name": "Load job + image count",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_image_add_check_limit_prepare_file_write"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_check_limit_prepare_file_write",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 1340,
+        "name": "Check limit, prepare file write",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบประกาศนี้');\nif (row.status === 'hidden') return fail(409, 'JOB_HIDDEN', 'ประกาศนี้ถูกแอดมินซ่อน แก้ไขไม่ได้');\nif (Number(row.image_count) >= 5) return fail(409, 'IMAGE_LIMIT', 'ใส่รูปได้สูงสุด 5 รูปต่อประกาศ');\nmsg.filename = '/data/uploads/public/jobs/' + msg.ctx.fileName;\nmsg.payload = msg.ctx.buffer;\ndelete msg.ctx.buffer;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_image_add_write_job_image"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_write_job_image",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 1340,
+        "name": "Write job image",
+        "type": "file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": true,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "wires": [
+            [
+                "shop_job_image_add_build_image_insert"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_build_image_insert",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 1340,
+        "name": "Build image insert",
+        "type": "function",
+        "func": "// The HAVING keeps the limit even when two uploads race\nmsg.topic = `INSERT INTO job_images (job_id, file_name, sort_order)\n        SELECT ?, ?, COALESCE(MAX(sort_order), 0) + 1 FROM job_images WHERE job_id = ? HAVING COUNT(*) < 5`;\nmsg.payload = [msg.ctx.jobId, msg.ctx.fileName, msg.ctx.jobId];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_image_add_insert_image"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_insert_image",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 1340,
+        "name": "Insert image",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_image_add_respond_drop_file_if_over_limit"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_respond_drop_file_if_over_limit_b",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 1390,
+        "name": "Delete rejected file",
+        "type": "file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": false,
+        "overwriteFile": "delete",
+        "encoding": "none",
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "shop_job_image_add_respond_drop_file_if_over_limit",
+        "z": "tab_shop",
+        "x": 1830,
+        "y": 1340,
+        "name": "Respond (drop file if over limit)",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst path = '/data/uploads/public/jobs/' + msg.ctx.fileName;\nif (!msg.payload.affectedRows) {\n    node.send([null, { filename: path }]);\n    return fail(409, 'IMAGE_LIMIT', 'ใส่รูปได้สูงสุด 5 รูปต่อประกาศ');\n}\nmsg.statusCode = 201;\nmsg.payload = { image: { id: msg.payload.insertId, path: 'jobs/' + msg.ctx.fileName } };\nreturn [msg, null];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_image_add_out"
+            ],
+            [
+                "shop_job_image_add_respond_drop_file_if_over_limit_b"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_add_out",
+        "z": "tab_shop",
+        "x": 2040,
+        "y": 1340,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
+    },
+    {
+        "id": "shop_job_image_delete_in",
+        "z": "tab_shop",
+        "x": 150,
+        "y": 1450,
+        "name": "DELETE /api/shop/jobs/:id/images/:imageId",
+        "type": "http in",
+        "url": "/api/shop/jobs/:id/images/:imageId",
+        "method": "delete",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "shop_job_image_delete_auth"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_auth",
+        "z": "tab_shop",
+        "x": 360,
+        "y": 1450,
+        "name": "auth-check (shop)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "shop",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "shop_job_image_delete_build_image_lookup"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_build_image_lookup",
+        "z": "tab_shop",
+        "x": 570,
+        "y": 1450,
+        "name": "Build image lookup",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\n// Numeric :id from the URL (0 when invalid)\nconst routeId = (name = 'id') => (/^\\d{1,10}$/.test(String(msg.req.params[name])) ? Number(msg.req.params[name]) : 0);\n\nconst jobId = routeId();\nconst imageId = routeId('imageId');\nif (!jobId || !imageId) return fail(404, 'NOT_FOUND', 'ไม่พบรูปนี้');\nmsg.ctx = { jobId, imageId };\nmsg.topic = `SELECT i.file_name, j.status FROM job_images i\n        JOIN jobs j ON j.id = i.job_id JOIN shops s ON s.id = j.shop_id\n        WHERE i.id = ? AND i.job_id = ? AND s.owner_user_id = ?`;\nmsg.payload = [imageId, jobId, msg.user.id];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_image_delete_load_image"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_load_image",
+        "z": "tab_shop",
+        "x": 780,
+        "y": 1450,
+        "name": "Load image",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_image_delete_build_image_delete"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_build_image_delete",
+        "z": "tab_shop",
+        "x": 990,
+        "y": 1450,
+        "name": "Build image delete",
+        "type": "function",
+        "func": "// Sends a standard error response via the tab's catch node\nfunction fail(status, code, message, details) {\n    msg.statusCode = status;\n    msg.errorCode = code;\n    msg.errorMessage = message;\n    if (details) msg.errorDetails = details;\n    node.error(message, msg);\n    return null;\n}\n\nconst row = msg.payload[0];\nif (!row) return fail(404, 'NOT_FOUND', 'ไม่พบรูปนี้');\nif (row.status === 'hidden') return fail(409, 'JOB_HIDDEN', 'ประกาศนี้ถูกแอดมินซ่อน แก้ไขไม่ได้');\nmsg.ctx.fileName = row.file_name;\nmsg.topic = 'DELETE FROM job_images WHERE id = ? AND job_id = ?';\nmsg.payload = [msg.ctx.imageId, msg.ctx.jobId];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_image_delete_delete_image_row"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_delete_image_row",
+        "z": "tab_shop",
+        "x": 1200,
+        "y": 1450,
+        "name": "Delete image row",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "shop_job_image_delete_respond_remove_file"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_respond_remove_file_b",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 1500,
+        "name": "Delete image file",
+        "type": "file",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": false,
+        "createDir": false,
+        "overwriteFile": "delete",
+        "encoding": "none",
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_respond_remove_file",
+        "z": "tab_shop",
+        "x": 1410,
+        "y": 1450,
+        "name": "Respond, remove file",
+        "type": "function",
+        "func": "const cleanup = { filename: '/data/uploads/public/jobs/' + msg.ctx.fileName };\nmsg.statusCode = 200;\nmsg.payload = { deleted: true };\nreturn [msg, cleanup];\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "shop_job_image_delete_out"
+            ],
+            [
+                "shop_job_image_delete_respond_remove_file_b"
+            ]
+        ]
+    },
+    {
+        "id": "shop_job_image_delete_out",
+        "z": "tab_shop",
+        "x": 1620,
+        "y": 1450,
         "name": "Send response",
         "type": "http response",
         "statusCode": "",

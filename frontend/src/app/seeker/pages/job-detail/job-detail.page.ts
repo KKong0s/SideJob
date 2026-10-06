@@ -26,6 +26,7 @@ import { addIcons } from 'ionicons';
 import { bookmark, bookmarkOutline, calendarOutline, cashOutline, locationOutline, personOutline, timeOutline } from 'ionicons/icons';
 
 import { environment } from '../../../../environments/environment';
+import { JobGalleryComponent } from '../../../shared/components/job-gallery/job-gallery.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { daysText, locationText, timeText, wageText } from '../../../shared/models/job.model';
 import { JobStatusForSeeker, PublicJob } from '../../../shared/models/search.model';
@@ -59,6 +60,7 @@ import { Loader } from '../../../shared/utils/loader';
     IonLabel,
     IonFooter,
     IonSpinner,
+    JobGalleryComponent,
     PageStateComponent,
   ],
 })

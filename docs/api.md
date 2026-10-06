@@ -44,6 +44,7 @@ Every error uses the same body:
 | 409 | `ALREADY_VERIFIED` | Shop tried to upload a verification document after being verified |
 | 409 | `JOB_CLOSED`, `ALREADY_APPLIED` | Applying to a job that is not accepting applications / applying twice |
 | 409 | `JOB_LOCKED` | Job has applications, so wage / schedule cannot change |
+| 409 | `IMAGE_LIMIT` | Job already has 5 sample photos |
 | 409 | `JOB_HIDDEN` | Job was hidden by an admin and cannot be edited / renewed |
 | 409 | `RENEW_LIMIT` | Job already expires 60 days ahead |
 | 409 | `INVALID_STATE` | Action not allowed in the current status (e.g. verifying a shop that is not pending) |
@@ -393,6 +394,8 @@ Only `verified` shops can post jobs.
 - `endTime` earlier than `startTime` = overnight shift.
 - `applicantCount` excludes cancelled applications; `locked` = has pending / accepted / completed applications.
 - A job stays open until the end of `expiresOn`; the Scheduled flow closes it at the next midnight.
+- `images` (`[{ "id": 4, "path": "jobs/7c1d...a2.jpg" }]`, max 5, in upload order) is included by the single-job endpoints
+  (`GET/POST/PUT /api/shop/jobs[/:id]` and `GET /api/jobs/:id`), not by list endpoints.
 
 ### Job input (create / update)
 
@@ -439,6 +442,20 @@ Only `verified` shops can post jobs.
 - If the job has applications, `wage`, `wageUnit`, `scheduleType`, dates, `workDays` and times must stay the same.
 - **Response 200:** `{ "job": <job object> }`
 - **Errors:** 400, 404, 409 `JOB_LOCKED` / `JOB_HIDDEN`
+
+### `POST /api/shop/jobs/:id/images`
+
+- **Role:** shop (own job, not hidden)
+- **Request:** `multipart/form-data`, one file in field `file`: JPG / PNG, max 5 MB
+- Optional sample photos, **max 5 per job**. Saved under a random name in `uploads/public/jobs/` (publicly readable).
+- **Response 201:** `{ "image": { "id": 4, "path": "jobs/7c1d...a2.jpg" } }`
+- **Errors:** 400, 404, 409 `IMAGE_LIMIT` / `JOB_HIDDEN`, 413 `FILE_TOO_LARGE`, 415 `UNSUPPORTED_FILE_TYPE`
+
+### `DELETE /api/shop/jobs/:id/images/:imageId`
+
+- Removes the photo row and its file.
+- **Response 200:** `{ "deleted": true }`
+- **Errors:** 404, 409 `JOB_HIDDEN`
 
 ### `POST /api/shop/jobs/:id/close`
 

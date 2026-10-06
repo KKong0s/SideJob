@@ -35,9 +35,10 @@ npm start                   # http://localhost:4200  (หรือ `ionic serve`
 
 - สคริปต์ใน `database/` รันอัตโนมัติ **ครั้งแรกที่สร้าง volume** เท่านั้น ตามลำดับ: `schema.sql` → `thai-geo/geo.sql` → `seed.sql` → `create-app-user.sh`
 - สร้างฐานข้อมูลใหม่ทั้งหมด (ข้อมูลเดิมหาย): `docker compose down -v && docker compose up -d`
+- ฐานข้อมูลที่มีอยู่แล้ว (ไม่ลบข้อมูล): `bash database/migrate.sh` รัน `database/migrations/*.sql` ตามลำดับชื่อ แล้ว GRANT สิทธิ์ตารางใหม่ให้ user ของแอป (migration เขียนให้รันซ้ำได้) ตารางใหม่ต้องใส่ทั้งใน `schema.sql` และไฟล์ migration
 - ข้อมูลจังหวัด/อำเภอมาจาก [kongvut/thai-province-data](https://github.com/kongvut/thai-province-data) (MIT) จัดเป็น 4 ภาค ถ้าจะสร้าง `geo.sql` ใหม่ให้รัน `node database/thai-geo/build-geo-sql.js`
 - user ของแอป (`DB_USER`) ได้สิทธิ์แยกเป็นรายตาราง: ตารางภูมิศาสตร์อ่านได้อย่างเดียว ส่วน `admin_logs` ได้แค่ SELECT/INSERT
-  **ถ้าเพิ่มตารางใหม่ ต้อง GRANT ให้ user นี้ด้วย** (ใส่ใน migration ของตารางนั้น)
+  **ถ้าเพิ่มตารางใหม่ ต้อง GRANT ให้ user นี้ด้วย** (`database/migrate.sh` ทำให้อัตโนมัติ)
 
 ## Node-RED
 

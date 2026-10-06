@@ -32,6 +32,8 @@
         <p class="posted">โพสต์ {{ timeAgo(j.createdAt) }} · รับสมัครถึง {{ thaiDate(j.expiresOn) }}</p>
       </div>
 
+      <app-job-gallery [images]="j.images ?? []"></app-job-gallery>
+
       <ion-list lines="none" class="facts">
         <ion-item>
           <ion-icon slot="start" name="cash-outline" color="success" aria-hidden="true"></ion-icon>

@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -25,8 +26,9 @@ import {
   ToastController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { chevronDown, lockClosedOutline } from 'ionicons/icons';
+import { cameraOutline, chevronDown, closeCircle, lockClosedOutline } from 'ionicons/icons';
 
+import { environment } from '../../../../environments/environment';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { openGeoPicker } from '../../../shared/components/geo-picker/geo-picker.component';
 import { JobInput, OwnJob, ScheduleType, WEEKDAYS, WEEKDAY_SHORT, WageUnit, Weekday } from '../../../shared/models/job.model';
@@ -34,10 +36,20 @@ import { GeoService } from '../../../shared/services/geo.service';
 import { JobsService } from '../../../shared/services/jobs.service';
 import { ShopService } from '../../../shared/services/shop.service';
 import { toApiError } from '../../../shared/utils/api-error';
+import { dateBetween } from '../../../shared/utils/date-validators';
 import { todayIso } from '../../../shared/utils/format';
 import { LoadState, errorState } from '../../../shared/utils/paged-list';
+import { IMAGE_TYPES, checkUpload } from '../../../shared/utils/upload';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const MAX_JOB_IMAGES = 5;
+
+/** A sample photo: saved on the server (id + path) or, while creating, waiting to be uploaded (file) */
+interface PhotoItem {
+  id?: number;
+  file?: File;
+  src: string;
+}
 
 /** Create (/shop/jobs/new) or edit (/shop/jobs/:id/edit) a job post */
 @Component({
@@ -67,7 +79,7 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
     PageStateComponent,
   ],
 })
-export class JobFormPage implements OnInit {
+export class JobFormPage implements OnInit, OnDestroy {
   private readonly shops = inject(ShopService);
   private readonly modals = inject(ModalController);
   private readonly toasts = inject(ToastController);
@@ -94,6 +106,14 @@ export class JobFormPage implements OnInit {
   readonly maxExpiry = todayIso(60);
   readonly maxWorkDate = todayIso(365);
 
+  // Dates of the job being edited: they stay valid even if already in the past
+  private originalStart: string | null = null;
+  private originalEnd: string | null = null;
+
+  readonly photos = signal<PhotoItem[]>([]);
+  readonly photoBusy = signal(false);
+  readonly maxPhotos = MAX_JOB_IMAGES;
+
   readonly form = inject(FormBuilder).group({
     title: ['', [Validators.required, Validators.maxLength(150)]],
     categoryId: [null as number | null, Validators.required],
@@ -103,22 +123,44 @@ export class JobFormPage implements OnInit {
     wage: [null as number | null, [Validators.required, Validators.min(1), Validators.max(100000)]],
     wageUnit: ['hour' as WageUnit, Validators.required],
     scheduleType: ['weekly' as ScheduleType, Validators.required],
-    startDate: [''],
-    endDate: [''],
+    // Work dates: today .. one year ahead (a typed past year is rejected, not only the calendar popup)
+    startDate: ['', dateBetween(() => this.today, () => this.maxWorkDate, () => this.originalStart)],
+    endDate: [
+      '',
+      dateBetween(
+        () => this.endDateMin(),
+        () => this.maxWorkDate,
+        () => this.originalEnd,
+      ),
+    ],
     startTime: ['09:00', [Validators.required, Validators.pattern(TIME)]],
     endTime: ['17:00', [Validators.required, Validators.pattern(TIME)]],
     minAge: [null as number | null, [Validators.min(18), Validators.max(60)]],
-    expiresOn: [todayIso(30)],
+    expiresOn: [todayIso(30), dateBetween(() => this.minExpiry, () => this.maxExpiry)],
   });
 
   readonly scheduleType = signal<ScheduleType>('weekly');
 
   constructor() {
-    addIcons({ chevronDown, lockClosedOutline });
+    addIcons({ cameraOutline, chevronDown, closeCircle, lockClosedOutline });
+    // End date's minimum follows the start date
+    this.form.controls.startDate.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.form.controls.endDate.updateValueAndValidity({ emitEvent: false }));
   }
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  /** End date may not be before the start date (form is undefined while it is being built) */
+  private endDateMin(): string {
+    const start: string | null | undefined = this.form?.controls.startDate.value;
+    return start || this.today;
+  }
+
+  ngOnDestroy(): void {
+    for (const p of this.photos()) if (p.file) URL.revokeObjectURL(p.src);
   }
 
   async load(): Promise<void> {
@@ -139,6 +181,9 @@ export class JobFormPage implements OnInit {
   }
 
   private fill(job: OwnJob): void {
+    this.originalStart = job.startDate;
+    this.originalEnd = job.endDate;
+    this.photos.set((job.images ?? []).map((img) => ({ id: img.id, src: `${environment.uploadsUrl}/${img.path}` })));
     this.form.patchValue({
       title: job.title,
       categoryId: job.category.id,
@@ -167,6 +212,67 @@ export class JobFormPage implements OnInit {
   setScheduleType(type: ScheduleType): void {
     this.form.controls.scheduleType.setValue(type);
     this.scheduleType.set(type);
+    // Hidden date fields must not block saving a weekly job
+    if (type === 'weekly') this.form.patchValue({ startDate: '', endDate: '' });
+  }
+
+  // --- Sample photos (optional, max 5) ---------------------------------------
+
+  async onPhotosSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    const room = MAX_JOB_IMAGES - this.photos().length;
+    if (files.length > room) await this.toast(`ใส่รูปได้สูงสุด ${MAX_JOB_IMAGES} รูป`, 'warning');
+    for (const file of files.slice(0, Math.max(room, 0))) {
+      const problem = checkUpload(file, IMAGE_TYPES);
+      if (problem) {
+        await this.toast(`${file.name}: ${problem}`, 'danger');
+        continue;
+      }
+      if (this.isEdit()) {
+        // The job exists: upload right away
+        this.photoBusy.set(true);
+        try {
+          const img = await this.shops.addJobImage(Number(this.id()), file);
+          this.photos.update((list) => [...list, { id: img.id, src: `${environment.uploadsUrl}/${img.path}` }]);
+        } catch {
+          // the interceptor shows the error toast
+        } finally {
+          this.photoBusy.set(false);
+        }
+      } else {
+        // New job: keep it until the job is created
+        this.photos.update((list) => [...list, { file, src: URL.createObjectURL(file) }]);
+      }
+    }
+  }
+
+  async removePhoto(photo: PhotoItem): Promise<void> {
+    if (photo.id) {
+      try {
+        await this.shops.deleteJobImage(Number(this.id()), photo.id);
+      } catch {
+        return; // the interceptor shows the error toast
+      }
+    } else {
+      URL.revokeObjectURL(photo.src);
+    }
+    this.photos.update((list) => list.filter((p) => p !== photo));
+  }
+
+  /** After creating a job: uploads the waiting photos; returns how many failed */
+  private async uploadPending(jobId: number): Promise<number> {
+    let failed = 0;
+    for (const photo of this.photos()) {
+      if (!photo.file) continue;
+      try {
+        await this.shops.addJobImage(jobId, photo.file);
+      } catch {
+        failed++;
+      }
+    }
+    return failed;
   }
 
   toggleDay(day: Weekday): void {
@@ -248,7 +354,9 @@ export class JobFormPage implements OnInit {
         this.nav.back();
       } else {
         const job = await this.shops.createJob(input);
-        await this.toast('โพสต์ประกาศแล้ว');
+        const failed = await this.uploadPending(job.id);
+        if (failed) await this.toast(`โพสต์ประกาศแล้ว แต่อัปโหลดรูปไม่สำเร็จ ${failed} รูป เพิ่มได้ในหน้าแก้ไข`, 'warning');
+        else await this.toast('โพสต์ประกาศแล้ว');
         await this.router.navigate(['/shop/jobs', job.id], { replaceUrl: true });
       }
     } catch (err) {
@@ -258,8 +366,8 @@ export class JobFormPage implements OnInit {
     }
   }
 
-  private async toast(message: string): Promise<void> {
-    const t = await this.toasts.create({ message, color: 'success', duration: 2000, position: 'top' });
+  private async toast(message: string, color = 'success'): Promise<void> {
+    const t = await this.toasts.create({ message, color, duration: 2500, position: 'top' });
     await t.present();
   }
 }

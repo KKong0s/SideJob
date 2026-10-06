@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { Applicant, ShopDashboard } from '../models/application.model';
-import { JobInput, JobStatus, OwnJob } from '../models/job.model';
+import { JobImage, JobInput, JobStatus, OwnJob } from '../models/job.model';
 import { Page, toHttpParams } from '../models/page.model';
 import { ShopProfileInput } from '../models/session.model';
 import { Shop } from '../models/shop.model';
@@ -67,6 +67,15 @@ export class ShopService {
   async renewJob(id: number): Promise<string> {
     const res = await firstValueFrom(this.http.post<{ expiresOn: string }>(`${this.api}/jobs/${id}/renew`, {}));
     return res.expiresOn;
+  }
+
+  async addJobImage(jobId: number, file: File): Promise<JobImage> {
+    const res = await firstValueFrom(this.http.post<{ image: JobImage }>(`${this.api}/jobs/${jobId}/images`, toForm(file, file.name)));
+    return res.image;
+  }
+
+  async deleteJobImage(jobId: number, imageId: number): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.api}/jobs/${jobId}/images/${imageId}`));
   }
 
   // --- Applicants ----------------------------------------------------------

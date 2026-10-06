@@ -34,6 +34,14 @@ export interface Job {
   status: JobStatus;
   createdAt: string;
   updatedAt: string;
+  /** Sample photos; only on detail endpoints (not in lists) */
+  images?: JobImage[];
+}
+
+export interface JobImage {
+  id: number;
+  /** Relative to environment.uploadsUrl */
+  path: string;
 }
 
 /** Shop owner's view of its own job */

@@ -178,6 +178,18 @@ CREATE TABLE jobs (
   )
 ) ENGINE=InnoDB;
 
+-- Optional sample photos of a job (max 5, enforced by the API). Files live in uploads/public/jobs.
+CREATE TABLE job_images (
+  id          INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+  job_id      INT UNSIGNED      NOT NULL,
+  file_name   VARCHAR(100)      NOT NULL,
+  sort_order  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  created_at  DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_job_images_job (job_id, sort_order),
+  CONSTRAINT fk_job_images_job FOREIGN KEY (job_id) REFERENCES jobs (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE saved_jobs (
   user_id     INT UNSIGNED NOT NULL,
   job_id      INT UNSIGNED NOT NULL,

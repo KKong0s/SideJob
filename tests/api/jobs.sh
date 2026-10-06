@@ -97,5 +97,28 @@ expect_eq "expire: shop notified" "$(root_sql "SELECT link FROM notifications WH
 req "expire: second run closes nothing new" POST /admin/jobs/close-expired 200 "$ADMIN_TOKEN"
 expect_eq "expire: idempotent" "$(root_sql "SELECT COUNT(*) FROM notifications WHERE user_id=$SHOP_USER AND type='job.expired'")" "1"
 
+echo "== sample photos"
+P=$(api POST /shop/jobs "$SHOP_TOKEN" "$(job_body 'งานมีรูป')"; json "$TMP/fix.out" j.job.id)
+upload "photo: svg rejected" "/shop/jobs/$P/images" 415 "$SHOP_TOKEN" "$TMP/evil.png"
+upload "photo: other shop -> 404" "/shop/jobs/$P/images" 404 "$OTHER_TOKEN" "$TMP/a.png"
+upload "photo: seeker forbidden" "/shop/jobs/$P/images" 403 "$SEEKER_TOKEN" "$TMP/a.png"
+for i in 1 2 3 4 5; do upload "photo: add #$i" "/shop/jobs/$P/images" 201 "$SHOP_TOKEN" "$TMP/a.png"; done
+IMG=$(body j.image.id); IMG_PATH=$(body j.image.path)
+check "photo: public URL" "$(curl -s -o /dev/null -w '%{http_code}' "$UPLOADS/$IMG_PATH")" 200
+upload "photo: 6th over limit" "/shop/jobs/$P/images" 409 "$SHOP_TOKEN" "$TMP/a.png"
+expect_eq "photo: limit code" "$(err_code)" "IMAGE_LIMIT"
+expect_eq "photo: no stray file after limit" "$(docker exec sidejob-nodered sh -c "ls /data/uploads/public/jobs | wc -l")" "$(root_sql "SELECT COUNT(*) FROM job_images")"
+req "photo: listed on own job" GET "/shop/jobs/$P" 200 "$SHOP_TOKEN"
+expect_eq "photo: 5 images in order" "$(body 'j.job.images.length+"/"+(j.job.images[4].id==='"$IMG"')')" "5/true"
+req "photo: listed on public detail" GET "/jobs/$P" 200
+expect_eq "photo: public images" "$(body 'j.job.images.length')" "5"
+req "photo: not in search list" GET "/jobs?provinceId=38&pageSize=50" 200
+expect_eq "photo: list has no images field" "$(body 'j.items.some(i=>i.id==='"$P"') && j.items.every(i=>!("images" in i))')" "true"
+req "photo: other shop cannot delete" DELETE "/shop/jobs/$P/images/$IMG" 404 "$OTHER_TOKEN"
+req "photo: delete" DELETE "/shop/jobs/$P/images/$IMG" 200 "$SHOP_TOKEN"
+check "photo: file removed" "$(curl -s -o /dev/null -w '%{http_code}' "$UPLOADS/$IMG_PATH")" 404
+upload "photo: add again after delete" "/shop/jobs/$P/images" 201 "$SHOP_TOKEN" "$TMP/a.png"
+docker exec sidejob-nodered sh -c "cd /data/uploads/public/jobs && rm -f $(root_sql "SELECT GROUP_CONCAT(file_name SEPARATOR ' ') FROM job_images WHERE job_id=$P")"
+
 echo "== cleanup"
 finish

@@ -79,9 +79,10 @@
       } @else {
         <div class="row">
           <ion-input type="date" label="วันเริ่มงาน *" labelPlacement="stacked" fill="outline" formControlName="startDate" [min]="today"
-            [max]="maxWorkDate"></ion-input>
+            [max]="maxWorkDate" errorText="เลือกได้ตั้งแต่วันนี้ ถึง 1 ปีข้างหน้า"></ion-input>
           <ion-input type="date" label="วันสิ้นสุด *" labelPlacement="stacked" fill="outline" formControlName="endDate"
-            [min]="form.controls.startDate.value || today" [max]="maxWorkDate"></ion-input>
+            [min]="form.controls.startDate.value || today" [max]="maxWorkDate"
+            errorText="ต้องไม่ก่อนวันเริ่มงาน และไม่เกิน 1 ปีข้างหน้า"></ion-input>
         </div>
       }
 
@@ -97,8 +98,28 @@
 
       @if (!isEdit()) {
         <ion-input type="date" label="วันหมดอายุประกาศ *" labelPlacement="stacked" fill="outline" formControlName="expiresOn"
-          [min]="minExpiry" [max]="maxExpiry" helperText="ค่าเริ่มต้น 30 วัน (สูงสุด 60 วัน) ต่ออายุได้ภายหลัง"></ion-input>
+          [min]="minExpiry" [max]="maxExpiry" helperText="ค่าเริ่มต้น 30 วัน (สูงสุด 60 วัน) ต่ออายุได้ภายหลัง"
+          errorText="เลือกได้ตั้งแต่พรุ่งนี้ ถึง 60 วันข้างหน้า"></ion-input>
       }
+
+      <h3>รูปตัวอย่างงาน (ไม่บังคับ)</h3>
+      <ion-note>JPG หรือ PNG ไม่เกิน 5 MB ต่อรูป สูงสุด {{ maxPhotos }} รูป เช่น บรรยากาศร้าน หน้างาน หรือชุดที่ต้องใส่</ion-note>
+      <div class="photos">
+        @for (photo of photos(); track photo.src) {
+          <div class="photo">
+            <img [src]="photo.src" alt="รูปตัวอย่างงาน" />
+            <button type="button" class="remove" (click)="removePhoto(photo)" aria-label="ลบรูป">
+              <ion-icon name="close-circle"></ion-icon>
+            </button>
+          </div>
+        }
+        @if (photos().length < maxPhotos) {
+          <button type="button" class="photo add" [disabled]="photoBusy()" (click)="photoInput.click()" aria-label="เพิ่มรูป">
+            @if (photoBusy()) { <ion-spinner name="dots"></ion-spinner> } @else { <ion-icon name="camera-outline"></ion-icon><span>เพิ่มรูป</span> }
+          </button>
+        }
+        <input #photoInput type="file" accept="image/jpeg,image/png" multiple hidden (change)="onPhotosSelected($event)" />
+      </div>
 
       @if (error()) {
         <ion-note color="danger">{{ error() }}</ion-note>

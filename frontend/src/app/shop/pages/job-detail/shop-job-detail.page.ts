@@ -24,6 +24,7 @@ import {
 import { addIcons } from 'ionicons';
 import { closeCircleOutline, createOutline, peopleOutline, refreshOutline } from 'ionicons/icons';
 
+import { JobGalleryComponent } from '../../../shared/components/job-gallery/job-gallery.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import {
   JOB_STATUS_COLOR,
@@ -64,6 +65,8 @@ import { Loader } from '../../../shared/utils/loader';
             <h1>{{ j.title }}</h1>
             <p class="meta">{{ j.category.name }} · โพสต์เมื่อ {{ thaiDateTime(j.createdAt) }}</p>
           </div>
+
+          <app-job-gallery [images]="j.images ?? []"></app-job-gallery>
 
           <ion-card>
             <ion-card-content class="stats">
@@ -177,6 +180,7 @@ import { Loader } from '../../../shared/utils/loader';
     IonItem,
     IonLabel,
     IonNote,
+    JobGalleryComponent,
     PageStateComponent,
   ],
 })
