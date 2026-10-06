@@ -29,6 +29,7 @@ import { flagOutline } from 'ionicons/icons';
 
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { StarsComponent } from '../../../shared/components/stars/stars.component';
+import { JOB_STATUS_LABEL } from '../../../shared/models/job.model';
 import { thaiDateTime } from '../../../shared/utils/format';
 import { PagedList } from '../../../shared/utils/paged-list';
 import { AdminReport } from '../../admin.model';
@@ -81,7 +82,7 @@ const STATUS_LABEL: Record<Status, string> = { open: 'รอจัดการ',
                   <div class="target">
                     @if (isJob(r)) {
                       <strong>{{ jobTarget(r).title }}</strong> · {{ jobTarget(r).shopName }}
-                      <ion-badge color="light">{{ jobTarget(r).status }}</ion-badge>
+                      <ion-badge color="light">{{ jobStatusLabel[jobTarget(r).status] ?? jobTarget(r).status }}</ion-badge>
                       <div><ion-button size="small" fill="clear" [routerLink]="['/admin/jobs', r.targetId]">ดูประกาศ</ion-button></div>
                     } @else {
                       <app-stars [value]="reviewTarget(r).rating"></app-stars> โดย {{ reviewTarget(r).author }}
@@ -174,6 +175,7 @@ export class AdminReportsPage {
   readonly status = signal<Status>('open');
   readonly list = new PagedList<AdminReport>((page, ctx) => this.admin.reports({ status: this.status(), page }, ctx));
   readonly statusLabel = STATUS_LABEL;
+  readonly jobStatusLabel: Record<string, string> = JOB_STATUS_LABEL;
   readonly thaiDateTime = thaiDateTime;
 
   constructor() {

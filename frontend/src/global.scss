@@ -85,3 +85,9 @@ ion-input input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--ion-text-color, #000) !important;
   caret-color: var(--ion-text-color, #000);
 }
+
+/* Material mode uppercases button text; keep LINE IDs, emails and English names as typed */
+ion-button,
+ion-segment-button {
+  text-transform: none;
+}
