@@ -48,6 +48,7 @@ Every error uses the same body:
 | 409 | `JOB_HIDDEN` | Job was hidden by an admin and cannot be edited / renewed |
 | 409 | `RENEW_LIMIT` | Job already expires 60 days ahead |
 | 409 | `REVIEW_NOT_ALLOWED`, `REVIEW_WINDOW_CLOSED`, `ALREADY_REVIEWED` | Review rules (completed, 14 days, once per side) |
+| 409 | `CHAT_CLOSED` | Chat is read-only (application cancelled or an account suspended) |
 | 409 | `ALREADY_REPORTED` | Same user reported the same target before |
 | 409 | `INVALID_STATE` | Action not allowed in the current status (e.g. verifying a shop that is not pending) |
 | 413 | `FILE_TOO_LARGE` | Upload over 5 MB |
@@ -169,7 +170,6 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
     "fullName": "สมชาย ใจดี",
     "birthDate": "2000-02-29",
     "phone": "081-234-5678",
-    "lineId": "somchai.j",
     "skills": "ชงกาแฟ",
     "bio": "...",
     "areas": [
@@ -181,7 +181,7 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
 
   - fullName required (max 150); birthDate required, age 18+
   - phone required, Thai format `0` + 8–9 digits (spaces / dashes are removed)
-  - lineId optional (`@?[A-Za-z0-9._-]{1,50}`); skills max 500; bio max 1000
+  - skills max 500; bio max 1000
   - areas: 1–30 items; `districtId: null` = whole province (and replaces that province's districts); districts must belong to the province; the saved list replaces the previous one
 - **Request (shop)**
 
@@ -192,7 +192,6 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
     "provinceId": 38,
     "districtId": 5001,
     "phone": "053123456",
-    "lineId": "@cafe",
     "description": "..."
   }
   ```
@@ -228,7 +227,7 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
   ```json
   {
     "profile": {
-      "fullName": "สมชาย ใจดี", "birthDate": "2000-02-29", "phone": "0812345678", "lineId": "somchai.j",
+      "fullName": "สมชาย ใจดี", "birthDate": "2000-02-29", "phone": "0812345678",
       "skills": "ชงกาแฟ", "bio": "...", "avatarPath": "avatars/3f1c...e9.jpg",
       "areas": [
         { "provinceId": 38, "districtId": null, "provinceName": "เชียงใหม่", "districtName": null },
@@ -273,12 +272,12 @@ Returned as `user` by the auth endpoints. Never contains the password hash.
   "cancelledAt": null,
   "completedAt": null,
   "job": <public job object>,
-  "contact": { "phone": "053123456", "lineId": "@cafe" }
+  "contact": { "phone": "053123456" }
 }
 ```
 
 - `status`: `pending` → `accepted` → `completed`, or `rejected` / `cancelled`
-- **`contact` (the shop's phone / LINE) is only filled when the status is `accepted` or `completed`**, and only the
+- **`contact` (the shop's phone) is only filled when the status is `accepted` or `completed`**, and only the
   application's own seeker can read it (checked in the SQL `WHERE a.seeker_user_id = <JWT user>`). Otherwise `null`.
 
 ### `POST /api/seeker/jobs/:id/apply`
@@ -322,7 +321,7 @@ Every query is scoped to the caller's own shop (`shops.owner_user_id = <JWT user
   "address": "1 ถนนนิมมานเหมินท์",
   "provinceId": 38, "districtId": 5001,
   "provinceName": "เชียงใหม่", "districtName": "เมืองเชียงใหม่",
-  "phone": "053123456", "lineId": "@cafe",
+  "phone": "053123456",
   "imagePath": "shops/9b2e...41.jpg",
   "verifyStatus": "pending",
   "rejectReason": null,
@@ -346,7 +345,7 @@ Only `verified` shops can post jobs.
 
 - **Role:** shop
 - **Request:** same body and rules as the shop variant of `PUT /api/auth/onboarding/profile`
-  (`shopName`, `address`, `provinceId`, `districtId`, `phone`, `lineId?`, `description?`)
+  (`shopName`, `address`, `provinceId`, `districtId`, `phone`, `description?`)
 - Updates general details only. The verification status is **not** reset.
 - **Response 200:** `{ "shop": <shop object> }`
 - **Errors:** 400 `VALIDATION_ERROR`, 409 `PROFILE_REQUIRED`
@@ -485,7 +484,7 @@ Only `verified` shops can post jobs.
 ```
 
 - The detail endpoint adds `seeker.bio`.
-- **`contact` (the seeker's phone / LINE) is only filled when the status is `accepted` or `completed`**, and only for
+- **`contact` (the seeker's phone) is only filled when the status is `accepted` or `completed`**, and only for
   the shop that owns the job (`WHERE s.owner_user_id = <JWT user>`). The seeker's birth date is never sent, only the age.
 
 ### `GET /api/shop/applications`
@@ -544,7 +543,7 @@ Search results, saved jobs and the detail endpoint return the job fields above (
 }
 ```
 
-- Shop phone / LINE are **never** included here (they come only with an accepted application, Phase 5).
+- The shop phone is **never** included here (they come only with an accepted application, Phase 5).
 - List endpoints leave out `description`; the detail endpoint adds it and extends `shop` with
   `description`, `address`, `provinceId`, `provinceName`, `districtName`.
 - A job is shown in search only when: `status = open`, `expiresOn ≥ today`, the work dates are not over (`dates` jobs),
@@ -640,6 +639,105 @@ Search results, saved jobs and the detail endpoint return the job fields above (
 - The target must exist and not be hidden. One report per user per target.
 - **Response 201:** `{ "report": { "id": 3, "status": "open" } }`
 - **Errors:** 400, 404, 409 `ALREADY_REPORTED`
+
+## Chat
+
+One conversation per application, opened **when the shop accepts** the application (the accept transaction creates it).
+Members are the seeker and the shop owner; every query checks `c.seeker_user_id = <JWT user> OR c.shop_user_id = <JWT user>`
+(anyone else gets 404). All endpoints: role **seeker** or **shop** with onboarding completed.
+
+- Sending is allowed while the application is `accepted` or `completed` and both accounts are active (`canSend`).
+  After a cancellation (or a suspension) the history stays readable but sending returns 409 `CHAT_CLOSED`.
+- Messages are text (1–2000 characters) or one JPG / PNG image (max 5 MB, saved under a random 128-bit name in
+  `uploads/public/chat/`, so only the two members ever get the URL).
+- Unread = messages from the other side newer than your read position.
+
+### Conversation object
+
+```json
+{
+  "id": 15,
+  "applicationId": 99,
+  "applicationStatus": "accepted",
+  "job": { "id": 40, "title": "พนักงานแคชเชียร์ กะดึก" },
+  "myRole": "seeker",
+  "other": { "userId": 242, "name": "มินิมาร์ทสุขใจ", "imagePath": "shops/9b2e...41.jpg" },
+  "canSend": true,
+  "otherLastReadId": 17,
+  "lastActivityAt": "2026-10-07 18:39:00"
+}
+```
+
+`other` is the shop for a seeker and the seeker for a shop. `otherLastReadId` drives the "อ่านแล้ว" receipt.
+
+### Message object
+
+```json
+{ "id": 18, "conversationId": 15, "senderId": 250, "body": "รับทราบค่ะ", "imagePath": null, "createdAt": "2026-10-07 18:40:12" }
+```
+
+`body` is `null` for an image message; `imagePath` is relative to `/uploads/`.
+
+### `GET /api/chat/conversations`
+
+- **Query:** `page`, `pageSize`. Newest activity first.
+- **Response 200:** page of conversation objects + `"lastMessage": { "body", "hasImage", "senderId", "mine" } | null` and `"unread": 2`
+
+### `GET /api/chat/unread-count`
+
+- **Response 200:** `{ "unread": 3 }` (all conversations; badge on the chat tab)
+
+### `GET /api/chat/conversations/:id`
+
+- **Response 200:** `{ "conversation": <conversation object> }` · **Errors:** 404
+
+### `GET /api/chat/by-application/:appId`
+
+- The conversation of an application (for the "แชท" button on application pages).
+- **Response 200:** `{ "conversation": <conversation object> }` · **Errors:** 404 (not accepted yet, or not a member)
+
+### `GET /api/chat/conversations/:id/messages`
+
+- **Query:** `limit` (default 30, max 100) and one of
+  - none — newest page
+  - `before=<message id>` — older page (scrolling up)
+  - `after=<message id>` — everything newer (catch-up after a reconnect)
+- **Response 200:** `{ "items": [<message>, ...], "hasMore": true }` (items always oldest first)
+- **Errors:** 400 (bad cursor), 404
+
+### `POST /api/chat/conversations/:id/messages`
+
+- **Request:** `{ "body": "สวัสดีครับ" }` (1–2000 characters)
+- Saves the message and moves the sender's read position in one transaction, then pushes it over the WebSocket to both members.
+- **Response 201:** `{ "message": <message> }`
+- **Errors:** 400, 404, 409 `CHAT_CLOSED`
+
+### `POST /api/chat/conversations/:id/images`
+
+- **Request:** `multipart/form-data`, one JPG / PNG in field `file` (max 5 MB, checked by file signature)
+- **Response 201:** `{ "message": <message with imagePath> }`
+- **Errors:** 400, 404, 409 `CHAT_CLOSED`, 413, 415
+
+### `POST /api/chat/conversations/:id/read`
+
+- **Request:** `{ "lastMessageId": 18 }` — never moves backwards, never past the newest message
+- Pushes a read receipt to the other member.
+- **Response 200:** `{ "lastReadId": 18 }` · **Errors:** 400, 404
+
+### WebSocket `ws://<host>:1881/ws/chat`
+
+Real-time push for chat (Node-RED `websocket in` / `websocket out` in the **Chat** tab).
+
+- Only the app's origins may connect (`webSocketNodeVerifyClient` in `settings.js` uses the `CORS_ORIGINS` list).
+- After connecting, the client must authenticate: `→ {"type":"auth","token":"<JWT>"}`
+  `← {"type":"auth.ok","userId":12}` or `← {"type":"auth.error","code":"UNAUTHORIZED" | "FORBIDDEN"}`
+  (same checks as auth-check: valid access token, active seeker / shop, onboarding done). Unauthenticated sockets receive nothing.
+- Keep-alive: `→ {"type":"ping"}` `← {"type":"pong"}` (the app pings every 25 s)
+- Server pushes:
+  - `{"type":"message","conversationId":15,"message":<message>}` — to both members (all their open sockets)
+  - `{"type":"read","conversationId":15,"userId":242,"lastReadId":18}` — to the other member
+- Sending always goes through the REST endpoints above; the socket is receive-only apart from auth / ping.
+- The app reconnects with backoff (1 s → 30 s) and then calls `messages?after=` to fill any gap.
 
 ## Notifications
 
@@ -779,7 +877,7 @@ Log actions: `shop.verify`, `shop.reject`, `user.suspend`, `user.unsuspend`, `jo
 
 ### `GET /api/admin/jobs/:id/applications`
 
-- Read-only list of applicants: `{ "id", "status", "appliedAt", "seeker": { "id", "fullName", "email" } }` (no phone / LINE)
+- Read-only list of applicants: `{ "id", "status", "appliedAt", "seeker": { "id", "fullName", "email" } }` (no phone)
 
 ### `POST /api/admin/jobs/:id/hide`
 

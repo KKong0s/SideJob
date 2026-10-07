@@ -3,7 +3,7 @@
 # Usage (from the repo root, docker stack running): bash tests/api/run-all.sh
 cd "$(dirname "$0")"
 failed=0
-for suite in auth shop jobs search applications notifications phase7; do
+for suite in auth shop jobs search applications notifications phase7 chat; do
   printf '%-15s ' "$suite"
   result=$(bash "./$suite.sh" 2>&1 | tail -1)
   echo "$result"

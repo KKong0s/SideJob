@@ -4,5 +4,7 @@ export const environment = {
   production: false,
   apiUrl: 'http://localhost:1881/api',
   uploadsUrl: 'http://localhost:1881/uploads',
+  /** Chat WebSocket (same host as the API) */
+  wsUrl: 'ws://localhost:1881/ws/chat',
   googleClientId: '',
 };

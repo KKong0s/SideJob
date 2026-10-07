@@ -11,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
 import { GeoService } from '../../services/geo.service';
 import { ShopService } from '../../services/shop.service';
 import { toApiError } from '../../utils/api-error';
-import { LINE_ID_PATTERN, normalisePhone, thaiPhone } from './profile-validators';
+import { normalisePhone, thaiPhone } from './profile-validators';
 
 /**
  * Shop details form.
@@ -42,7 +42,6 @@ export class ShopProfileFormComponent implements OnInit {
     provinceId: [null as number | null, Validators.required],
     districtId: [null as number | null, Validators.required],
     phone: ['', [Validators.required, thaiPhone]],
-    lineId: ['', Validators.pattern(LINE_ID_PATTERN)],
     description: ['', Validators.maxLength(2000)],
   });
 
@@ -62,7 +61,6 @@ export class ShopProfileFormComponent implements OnInit {
         provinceId: s.provinceId,
         districtId: s.districtId,
         phone: s.phone ?? '',
-        lineId: s.lineId ?? '',
         description: s.description ?? '',
       });
     }
@@ -114,7 +112,6 @@ export class ShopProfileFormComponent implements OnInit {
         provinceId: v.provinceId!,
         districtId: v.districtId!,
         phone: normalisePhone(v.phone ?? ''),
-        lineId: (v.lineId ?? '').trim() || undefined,
         description: (v.description ?? '').trim() || undefined,
       };
       if (this.mode() === 'edit') {

@@ -23,7 +23,7 @@ import { AreaService } from '../../services/area.service';
 import { AuthService } from '../../services/auth.service';
 import { GeoService } from '../../services/geo.service';
 import { toApiError } from '../../utils/api-error';
-import { LINE_ID_PATTERN, minAge, normalisePhone, thaiPhone, yearsAgo } from './profile-validators';
+import { minAge, normalisePhone, thaiPhone, yearsAgo } from './profile-validators';
 
 const MIN_AGE = 18;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -71,7 +71,6 @@ export class SeekerProfileFormComponent implements OnInit {
     fullName: ['', [Validators.required, Validators.maxLength(150)]],
     birthDate: ['', [Validators.required, minAge(MIN_AGE)]],
     phone: ['', [Validators.required, thaiPhone]],
-    lineId: ['', Validators.pattern(LINE_ID_PATTERN)],
     skills: ['', Validators.maxLength(500)],
     bio: ['', Validators.maxLength(1000)],
   });
@@ -97,7 +96,6 @@ export class SeekerProfileFormComponent implements OnInit {
       fullName: p.fullName,
       birthDate: p.birthDate,
       phone: p.phone ?? '',
-      lineId: p.lineId ?? '',
       skills: p.skills ?? '',
       bio: p.bio ?? '',
     });
@@ -167,7 +165,6 @@ export class SeekerProfileFormComponent implements OnInit {
         fullName: v.fullName.trim(),
         birthDate: v.birthDate,
         phone: normalisePhone(v.phone),
-        lineId: v.lineId.trim() || undefined,
         skills: v.skills.trim() || undefined,
         bio: v.bio.trim() || undefined,
         areas: this.areas(),

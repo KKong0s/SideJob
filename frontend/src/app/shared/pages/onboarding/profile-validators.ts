@@ -2,8 +2,6 @@ import { AbstractControl, ValidationErrors } from '@angular/forms';
 
 // Mirrors the API rules so users see problems before submitting
 
-export const LINE_ID_PATTERN = /^@?[A-Za-z0-9._-]{1,50}$/;
-
 export const normalisePhone = (value: string) => value.replace(/[\s-]/g, '');
 
 export function thaiPhone(control: AbstractControl<string>): ValidationErrors | null {

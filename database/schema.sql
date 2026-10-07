@@ -70,7 +70,6 @@ CREATE TABLE seeker_profiles (
   full_name    VARCHAR(150) NOT NULL,
   birth_date   DATE         NULL,
   phone        VARCHAR(20)  NULL,
-  line_id      VARCHAR(50)  NULL,
   skills       VARCHAR(500) NULL,
   bio          TEXT         NULL,
   avatar_file  VARCHAR(100) NULL,                -- random file name in uploads/public
@@ -103,7 +102,6 @@ CREATE TABLE shops (
   province_id          SMALLINT UNSIGNED NOT NULL,
   district_id          SMALLINT UNSIGNED NOT NULL,
   phone                VARCHAR(20)       NULL,
-  line_id              VARCHAR(50)       NULL,
   image_file           VARCHAR(100)      NULL,   -- uploads/public
   verify_doc_file      VARCHAR(100)      NULL,   -- uploads/private (admin API only)
   verify_status        ENUM('unsubmitted', 'pending', 'verified', 'rejected') NOT NULL DEFAULT 'unsubmitted',
@@ -239,6 +237,41 @@ CREATE TABLE reviews (
   CONSTRAINT fk_reviews_reviewee    FOREIGN KEY (reviewee_user_id) REFERENCES users (id),
   CONSTRAINT chk_reviews_rating     CHECK (rating BETWEEN 1 AND 5),
   CONSTRAINT chk_reviews_not_self   CHECK (reviewer_user_id <> reviewee_user_id)
+) ENGINE=InnoDB;
+
+-- One chat per accepted application (seeker <-> shop owner). Messages are text or an image (uploads/public/chat).
+-- *_last_read_id = newest message each side has read (unread count = messages after it from the other side).
+CREATE TABLE conversations (
+  id                   INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  application_id       INT UNSIGNED    NOT NULL,
+  seeker_user_id       INT UNSIGNED    NOT NULL,
+  shop_user_id         INT UNSIGNED    NOT NULL,
+  last_message_id      BIGINT UNSIGNED NULL,
+  last_message_at      DATETIME        NULL,
+  seeker_last_read_id  BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  shop_last_read_id    BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  created_at           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_conversations_application (application_id),
+  KEY idx_conversations_seeker (seeker_user_id, last_message_at),
+  KEY idx_conversations_shop (shop_user_id, last_message_at),
+  CONSTRAINT fk_conversations_application FOREIGN KEY (application_id) REFERENCES applications (id) ON DELETE CASCADE,
+  CONSTRAINT fk_conversations_seeker      FOREIGN KEY (seeker_user_id) REFERENCES users (id),
+  CONSTRAINT fk_conversations_shop        FOREIGN KEY (shop_user_id)   REFERENCES users (id)
+) ENGINE=InnoDB;
+
+CREATE TABLE chat_messages (
+  id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  conversation_id  INT UNSIGNED    NOT NULL,
+  sender_user_id   INT UNSIGNED    NOT NULL,
+  body             TEXT            NULL,
+  image_file       VARCHAR(100)    NULL,
+  created_at       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_chat_messages_conversation (conversation_id, id),
+  CONSTRAINT fk_chat_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE,
+  CONSTRAINT fk_chat_messages_sender       FOREIGN KEY (sender_user_id)  REFERENCES users (id),
+  CONSTRAINT chk_chat_messages_content     CHECK (body IS NOT NULL OR image_file IS NOT NULL)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------

@@ -37,6 +37,10 @@ export const SHOP_ROUTES: Routes = [
         loadComponent: () => import('./pages/applicants/applicants.page').then((m) => m.ApplicantsPage),
       },
       {
+        path: 'chats',
+        loadComponent: () => import('../shared/pages/chat/chat-list.page').then((m) => m.ChatListPage),
+      },
+      {
         path: 'profile',
         loadComponent: () => import('./pages/profile/shop-profile.page').then((m) => m.ShopProfilePage),
       },

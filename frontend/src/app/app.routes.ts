@@ -22,6 +22,11 @@ export const routes: Routes = [
     loadComponent: () => import('./shared/pages/onboarding/onboarding.page').then((m) => m.OnboardingPage),
   },
   {
+    path: 'chat/:id',
+    canMatch: [authGuard, profileCompleteGuard],
+    loadComponent: () => import('./shared/pages/chat/chat-room.page').then((m) => m.ChatRoomPage),
+  },
+  {
     path: 'notifications',
     canMatch: [authGuard, profileCompleteGuard],
     loadComponent: () => import('./shared/pages/notifications/notifications.page').then((m) => m.NotificationsPage),

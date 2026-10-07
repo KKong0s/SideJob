@@ -13,7 +13,6 @@ export interface Shop {
   provinceName: string;
   districtName: string;
   phone: string | null;
-  lineId: string | null;
   /** Relative to environment.uploadsUrl */
   imagePath: string | null;
   verifyStatus: VerifyStatus;

@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   AlertController,
   IonAvatar,
@@ -34,6 +34,7 @@ import { PageStateComponent } from '../../../shared/components/page-state/page-s
 import { ReviewListComponent } from '../../../shared/components/review-list/review-list.component';
 import { StarsComponent } from '../../../shared/components/stars/stars.component';
 import { ReviewInput } from '../../../shared/models/review.model';
+import { ChatService } from '../../../shared/services/chat.service';
 import { ReviewService } from '../../../shared/services/review.service';
 import { APPLICATION_STATUS_COLOR, APPLICATION_STATUS_LABEL } from '../../../shared/models/application.model';
 import { ShopService } from '../../../shared/services/shop.service';
@@ -72,7 +73,7 @@ import { Loader } from '../../../shared/utils/loader';
           @if (a.contact) {
             <ion-card color="light">
               <ion-card-header><ion-card-title>ติดต่อผู้สมัคร</ion-card-title></ion-card-header>
-              <ion-card-content><app-contact-buttons [contact]="a.contact"></app-contact-buttons></ion-card-content>
+              <ion-card-content><app-contact-buttons [contact]="a.contact" chatLabel="แชทกับผู้สมัคร" (chat)="openChat()"></app-contact-buttons></ion-card-content>
             </ion-card>
           }
 
@@ -110,7 +111,7 @@ import { Loader } from '../../../shared/utils/loader';
           }
 
           @if (a.status === 'pending') {
-            <ion-note class="ion-padding-horizontal note">เบอร์โทรและ LINE ของผู้สมัครจะแสดงหลังกดรับเข้าทำงาน</ion-note>
+            <ion-note class="ion-padding-horizontal note">เบอร์โทรของผู้สมัครและปุ่มแชทจะแสดงหลังกดรับเข้าทำงาน</ion-note>
             <div class="actions">
               <ion-button color="success" [disabled]="busy()" (click)="decide('accept')">
                 <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>รับเข้าทำงาน
@@ -201,6 +202,8 @@ export class ApplicantDetailPage {
   private readonly alerts = inject(AlertController);
   private readonly toasts = inject(ToastController);
   private readonly reviews = inject(ReviewService);
+  private readonly chat = inject(ChatService);
+  private readonly router = inject(Router);
 
   readonly id = input.required<string>();
   readonly appId = computed(() => Number(this.id()));
@@ -214,6 +217,15 @@ export class ApplicantDetailPage {
 
   constructor() {
     addIcons({ checkmarkCircleOutline, checkmarkDoneOutline, closeCircleOutline, personCircleOutline });
+  }
+
+  async openChat(): Promise<void> {
+    try {
+      const conversation = await this.chat.byApplication(this.appId());
+      await this.router.navigate(['/chat', conversation.id]);
+    } catch {
+      // the interceptor shows the error toast
+    }
   }
 
   ionViewWillEnter(): void {
@@ -265,7 +277,7 @@ export class ApplicantDetailPage {
     const alert = await this.alerts.create({
       header: accept ? `รับ ${name} เข้าทำงาน?` : `ปฏิเสธ ${name}?`,
       message: accept
-        ? 'ทั้งสองฝ่ายจะเห็นเบอร์โทรและ LINE ของกันและกัน และผู้สมัครจะได้รับแจ้งเตือน'
+        ? 'ทั้งสองฝ่ายจะเห็นเบอร์โทรของกันและกัน และแชทกันได้ และผู้สมัครจะได้รับแจ้งเตือน'
         : 'ผู้สมัครจะได้รับแจ้งเตือน และสมัครงานนี้ซ้ำไม่ได้',
       buttons: [
         { text: 'ยกเลิก', role: 'cancel' },

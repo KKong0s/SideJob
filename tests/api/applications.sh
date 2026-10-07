@@ -42,7 +42,7 @@ expect_eq "seeker list: one, contact hidden" "$(body 'j.items.length+"/"+j.items
 expect_eq "seeker list: no shop phone anywhere" "$(body 'JSON.stringify(j).includes("053123456")')" "false"
 req "shop list" GET "/shop/applications?jobId=$JOB" 200 "$SHOP_TOKEN"
 expect_eq "shop list: applicant, contact hidden" "$(body 'j.items.length+"/"+j.items[0].seeker.fullName+"/"+j.items[0].seeker.age+"/"+j.items[0].contact')" "1/ผู้หางาน seeker/26/null"
-expect_eq "shop list: no seeker phone / LINE anywhere" "$(body 'JSON.stringify(j).includes("0812345678") || JSON.stringify(j).includes("seeker.seeker")')" "false"
+expect_eq "shop list: no seeker phone anywhere" "$(body 'JSON.stringify(j).includes("0812345678")')" "false"
 req "shop detail: hidden contact" GET "/shop/applications/$APP" 200 "$SHOP_TOKEN"
 expect_eq "shop detail: contact null" "$(body j.application.contact)" ""
 
@@ -61,9 +61,9 @@ expect_eq "accept: seeker notified" "$(root_sql "SELECT link FROM notifications 
 req "accept: again" POST "/shop/applications/$APP/accept" 409 "$SHOP_TOKEN"
 req "reject accepted: invalid" POST "/shop/applications/$APP/reject" 409 "$SHOP_TOKEN"
 req "seeker detail: shop contact" GET "/seeker/applications/$APP" 200 "$SEEKER_TOKEN"
-expect_eq "seeker detail: shop phone + LINE" "$(body 'j.application.status+"/"+j.application.contact.phone+"/"+j.application.contact.lineId+"/"+j.application.job.description')" "accepted/053123456/@shopshop/รายละเอียด"
+expect_eq "seeker detail: shop phone, no LINE" "$(body 'j.application.status+"/"+j.application.contact.phone+"/"+("lineId" in j.application.contact)+"/"+j.application.job.description')" "accepted/053123456/false/รายละเอียด"
 req "shop detail: seeker contact" GET "/shop/applications/$APP" 200 "$SHOP_TOKEN"
-expect_eq "shop detail: seeker phone + LINE" "$(body 'j.application.contact.phone+"/"+j.application.contact.lineId')" "0812345678/seeker.seeker"
+expect_eq "shop detail: seeker phone, no LINE" "$(body 'j.application.contact.phone+"/"+("lineId" in j.application.contact)')" "0812345678/false"
 req "other seeker still sees nothing" GET /seeker/applications 200 "$SEEKER2_TOKEN"
 expect_eq "other seeker: empty" "$(body j.items.length)" "0"
 

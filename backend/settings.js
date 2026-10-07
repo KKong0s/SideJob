@@ -43,6 +43,12 @@ module.exports = {
     allowedHeaders: 'Content-Type,Authorization',
   },
 
+  // Chat WebSocket (/ws/chat): only the app's own origins may connect (same list as CORS).
+  // Each socket must still send a valid JWT before it receives anything.
+  webSocketNodeVerifyClient: function (info) {
+    return corsOrigins.includes(info.origin);
+  },
+
   // Only the public uploads folder is served. uploads/private (shop verification docs) is never static.
   httpStatic: [{ path: '/data/uploads/public', root: '/uploads/' }],
 

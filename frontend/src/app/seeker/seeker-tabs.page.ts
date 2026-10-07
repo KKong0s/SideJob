@@ -1,7 +1,9 @@
-import { Component } from '@angular/core';
-import { IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs } from '@ionic/angular';
+import { Component, inject } from '@angular/core';
+import { IonBadge, IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { bookmarkOutline, documentTextOutline, personOutline, searchOutline } from 'ionicons/icons';
+import { chatbubblesOutline, bookmarkOutline, documentTextOutline, personOutline, searchOutline } from 'ionicons/icons';
+
+import { ChatService } from '../shared/services/chat.service';
 
 /** Bottom tabs for job seekers */
 @Component({
@@ -21,6 +23,13 @@ import { bookmarkOutline, documentTextOutline, personOutline, searchOutline } fr
           <ion-icon name="document-text-outline" aria-hidden="true"></ion-icon>
           <ion-label>ใบสมัครของฉัน</ion-label>
         </ion-tab-button>
+        <ion-tab-button tab="chats">
+          <ion-icon name="chatbubbles-outline" aria-hidden="true"></ion-icon>
+          <ion-label>แชท</ion-label>
+          @if (chat.unread() > 0) {
+            <ion-badge color="danger">{{ chat.unread() > 99 ? '99+' : chat.unread() }}</ion-badge>
+          }
+        </ion-tab-button>
         <ion-tab-button tab="profile">
           <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
           <ion-label>โปรไฟล์</ion-label>
@@ -28,10 +37,12 @@ import { bookmarkOutline, documentTextOutline, personOutline, searchOutline } fr
       </ion-tab-bar>
     </ion-tabs>
   `,
-  imports: [IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel],
+  imports: [IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonBadge],
 })
 export class SeekerTabsPage {
+  readonly chat = inject(ChatService);
+
   constructor() {
-    addIcons({ searchOutline, bookmarkOutline, documentTextOutline, personOutline });
+    addIcons({ chatbubblesOutline, searchOutline, bookmarkOutline, documentTextOutline, personOutline });
   }
 }

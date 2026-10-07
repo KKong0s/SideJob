@@ -29,33 +29,33 @@ const out = [];
 const sql = (s) => out.push(s);
 
 // --- shops -------------------------------------------------------------------
-// [key, shop name, description, address, province, district, phone, line, verify status, reject reason]
+// [key, shop name, description, address, province, district, phone, verify status, reject reason]
 const shops = [
-  ['s01', 'คาเฟ่ใบชา สยาม', 'คาเฟ่ชาและขนมโฮมเมด ใกล้ BTS สยาม บรรยากาศเป็นกันเอง', '99/1 ซอยสยามสแควร์ 3 แขวงปทุมวัน', 1, 1007, '021234501', '@baichacafe', 'verified'],
-  ['s02', 'ข้าวมันไก่เฮียเล้ง', 'ร้านข้าวมันไก่เจ้าดังย่านบางรัก เปิดมากว่า 30 ปี', '45 ถนนเจริญกรุง แขวงบางรัก', 1, 1004, '021234502', 'hialeng.chicken', 'verified'],
-  ['s03', 'มินิมาร์ทสุขใจ', 'ร้านสะดวกซื้อ 24 ชั่วโมง ใกล้ตลาดบางกะปิ', '200 ถนนลาดพร้าว แขวงคลองจั่น', 1, 1006, '021234503', '@sukjaimart', 'verified'],
-  ['s04', 'บ้านกาแฟดอยช้าง นิมมาน', 'ร้านกาแฟคั่วเองจากดอยช้าง สาขานิมมานเหมินท์', '12 ถนนนิมมานเหมินท์ ซอย 9', 38, 5001, '053123404', '@doichangnimman', 'verified'],
-  ['s05', 'ล้านนา อีเวนต์ แอนด์ ออแกไนซ์', 'รับจัดงานอีเวนต์ งานแต่ง งานบูธ ทั่วเชียงใหม่', '88 ถนนห้วยแก้ว', 38, 5001, '053123405', 'lanna.event', 'verified'],
-  ['s06', 'กะตะ บีช รีสอร์ท', 'รีสอร์ทริมหาดกะตะ 60 ห้อง', '5 ถนนกะตะ ตำบลกะรน', 66, 8302, '076123406', '@katabeach', 'verified'],
-  ['s07', 'ขอนแก่น เอ็กซ์เพรส โลจิสติกส์', 'คลังสินค้าและบริการขนส่งพัสดุภาคอีสาน', '333 ถนนมิตรภาพ', 28, 4001, '043123407', 'kkexpress', 'verified'],
-  ['s08', 'บางละมุง ซีฟู้ด', 'ร้านอาหารทะเลสดริมทะเล ใกล้พัทยาเหนือ', '19 ถนนเลียบชายหาด', 11, 2004, '038123408', '@blseafood', 'verified'],
-  ['s09', 'หาดใหญ่ สมาร์ท ติวเตอร์', 'สถาบันกวดวิชา ม.ต้น–ม.ปลาย', '7 ถนนนิพัทธ์อุทิศ 3', 70, 9011, '074123409', 'hy.smarttutor', 'verified'],
-  ['s10', 'โคราช คลีน แอนด์ แคร์', 'บริการทำความสะอาดบ้าน คอนโด และสำนักงาน', '50 ถนนมิตรภาพ', 19, 3001, '044123410', '@koratclean', 'verified'],
-  ['s11', 'เบเกอรี่บ้านนนท์', 'ขนมปังและเค้กอบสดทุกวัน', '9 ถนนรัตนาธิเบศร์', 3, 1201, '025123411', 'bakerynon', 'pending'],
-  ['s12', 'สมุย ไดฟ์ ช็อป', 'ร้านอุปกรณ์ดำน้ำและทัวร์ดำน้ำเกาะเต่า', '21 หาดเฉวง', 67, 8404, '077123412', '@samuidive', 'pending'],
-  ['s13', 'อุดร แฟชั่นมอลล์', 'ร้านเสื้อผ้าแฟชั่นในห้าง', '1 ถนนประจักษ์ศิลปาคม', 29, 4101, '042123413', 'udonfashion', 'rejected', 'เอกสารไม่ชัด กรุณาส่งหนังสือรับรองบริษัทฉบับล่าสุด'],
-  ['s14', 'ร้านน้ำปั่นแม่ริม', 'ร้านน้ำผลไม้ปั่นริมทาง', '4 ถนนเชียงใหม่-ฝาง', 38, 5007, '053123414', null, 'unsubmitted'],
+  ['s01', 'คาเฟ่ใบชา สยาม', 'คาเฟ่ชาและขนมโฮมเมด ใกล้ BTS สยาม บรรยากาศเป็นกันเอง', '99/1 ซอยสยามสแควร์ 3 แขวงปทุมวัน', 1, 1007, '021234501', 'verified'],
+  ['s02', 'ข้าวมันไก่เฮียเล้ง', 'ร้านข้าวมันไก่เจ้าดังย่านบางรัก เปิดมากว่า 30 ปี', '45 ถนนเจริญกรุง แขวงบางรัก', 1, 1004, '021234502', 'verified'],
+  ['s03', 'มินิมาร์ทสุขใจ', 'ร้านสะดวกซื้อ 24 ชั่วโมง ใกล้ตลาดบางกะปิ', '200 ถนนลาดพร้าว แขวงคลองจั่น', 1, 1006, '021234503', 'verified'],
+  ['s04', 'บ้านกาแฟดอยช้าง นิมมาน', 'ร้านกาแฟคั่วเองจากดอยช้าง สาขานิมมานเหมินท์', '12 ถนนนิมมานเหมินท์ ซอย 9', 38, 5001, '053123404', 'verified'],
+  ['s05', 'ล้านนา อีเวนต์ แอนด์ ออแกไนซ์', 'รับจัดงานอีเวนต์ งานแต่ง งานบูธ ทั่วเชียงใหม่', '88 ถนนห้วยแก้ว', 38, 5001, '053123405', 'verified'],
+  ['s06', 'กะตะ บีช รีสอร์ท', 'รีสอร์ทริมหาดกะตะ 60 ห้อง', '5 ถนนกะตะ ตำบลกะรน', 66, 8302, '076123406', 'verified'],
+  ['s07', 'ขอนแก่น เอ็กซ์เพรส โลจิสติกส์', 'คลังสินค้าและบริการขนส่งพัสดุภาคอีสาน', '333 ถนนมิตรภาพ', 28, 4001, '043123407', 'verified'],
+  ['s08', 'บางละมุง ซีฟู้ด', 'ร้านอาหารทะเลสดริมทะเล ใกล้พัทยาเหนือ', '19 ถนนเลียบชายหาด', 11, 2004, '038123408', 'verified'],
+  ['s09', 'หาดใหญ่ สมาร์ท ติวเตอร์', 'สถาบันกวดวิชา ม.ต้น–ม.ปลาย', '7 ถนนนิพัทธ์อุทิศ 3', 70, 9011, '074123409', 'verified'],
+  ['s10', 'โคราช คลีน แอนด์ แคร์', 'บริการทำความสะอาดบ้าน คอนโด และสำนักงาน', '50 ถนนมิตรภาพ', 19, 3001, '044123410', 'verified'],
+  ['s11', 'เบเกอรี่บ้านนนท์', 'ขนมปังและเค้กอบสดทุกวัน', '9 ถนนรัตนาธิเบศร์', 3, 1201, '025123411', 'pending'],
+  ['s12', 'สมุย ไดฟ์ ช็อป', 'ร้านอุปกรณ์ดำน้ำและทัวร์ดำน้ำเกาะเต่า', '21 หาดเฉวง', 67, 8404, '077123412', 'pending'],
+  ['s13', 'อุดร แฟชั่นมอลล์', 'ร้านเสื้อผ้าแฟชั่นในห้าง', '1 ถนนประจักษ์ศิลปาคม', 29, 4101, '042123413', 'rejected', 'เอกสารไม่ชัด กรุณาส่งหนังสือรับรองบริษัทฉบับล่าสุด'],
+  ['s14', 'ร้านน้ำปั่นแม่ริม', 'ร้านน้ำผลไม้ปั่นริมทาง', '4 ถนนเชียงใหม่-ฝาง', 38, 5007, '053123414', 'unsubmitted'],
 ];
 
 // --- seekers -----------------------------------------------------------------
-// [key, full name, birth date, phone, line, skills, bio, areas [[province, district|null]]]
+// [key, full name, birth date, phone, skills, bio, areas [[province, district|null]]]
 const seekers = [
-  ['p01', 'สมชาย ใจดี', '2001-04-12', '0811111101', 'somchai.j', 'ชงกาแฟ, บริการลูกค้า, ภาษาอังกฤษพื้นฐาน', 'นักศึกษาปี 3 อยากหางานเสาร์-อาทิตย์', [[1, 1007], [1, 1004]]],
-  ['p02', 'มาลี สวยงาม', '1999-09-30', '0811111102', 'malee.s', 'แคชเชียร์, จัดสต็อก', 'ทำงานร้านสะดวกซื้อมา 2 ปี', [[1, null]]],
-  ['p03', 'อนุชา คนขยัน', '2000-01-20', '0811111103', 'anucha.k', 'ขับรถยนต์, ยกของ, แพ็กสินค้า', 'มีใบขับขี่ ขยัน ตรงต่อเวลา', [[28, null], [19, 3001]]],
-  ['p04', 'ปิยะนุช ล้านนา', '2002-06-05', '0811111104', 'piyanuch.l', 'บาริสต้า, MC งานอีเวนต์', 'ชอบงานบริการ พูดเก่ง', [[38, 5001]]],
-  ['p05', 'ธนากร ทะเลใส', '1998-11-11', '0811111105', 'thanakorn.t', 'ภาษาอังกฤษ, งานโรงแรม, ว่ายน้ำ', 'เคยทำงานรีสอร์ทที่กระบี่', [[66, null], [11, 2004]]],
-  ['p06', 'กมลวรรณ เก่งคณิต', '2003-02-14', '0811111106', 'kamonwan.k', 'สอนคณิตศาสตร์, วิทยาศาสตร์', 'นักศึกษาวิศวะ ชอบสอนน้อง', [[70, 9011]]],
+  ['p01', 'สมชาย ใจดี', '2001-04-12', '0811111101', 'ชงกาแฟ, บริการลูกค้า, ภาษาอังกฤษพื้นฐาน', 'นักศึกษาปี 3 อยากหางานเสาร์-อาทิตย์', [[1, 1007], [1, 1004]]],
+  ['p02', 'มาลี สวยงาม', '1999-09-30', '0811111102', 'แคชเชียร์, จัดสต็อก', 'ทำงานร้านสะดวกซื้อมา 2 ปี', [[1, null]]],
+  ['p03', 'อนุชา คนขยัน', '2000-01-20', '0811111103', 'ขับรถยนต์, ยกของ, แพ็กสินค้า', 'มีใบขับขี่ ขยัน ตรงต่อเวลา', [[28, null], [19, 3001]]],
+  ['p04', 'ปิยะนุช ล้านนา', '2002-06-05', '0811111104', 'บาริสต้า, MC งานอีเวนต์', 'ชอบงานบริการ พูดเก่ง', [[38, 5001]]],
+  ['p05', 'ธนากร ทะเลใส', '1998-11-11', '0811111105', 'ภาษาอังกฤษ, งานโรงแรม, ว่ายน้ำ', 'เคยทำงานรีสอร์ทที่กระบี่', [[66, null], [11, 2004]]],
+  ['p06', 'กมลวรรณ เก่งคณิต', '2003-02-14', '0811111106', 'สอนคณิตศาสตร์, วิทยาศาสตร์', 'นักศึกษาวิศวะ ชอบสอนน้อง', [[70, 9011]]],
 ];
 
 // --- jobs --------------------------------------------------------------------
@@ -118,25 +118,25 @@ sql('SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;');
 sql("SET time_zone = '+07:00';");
 sql('START TRANSACTION;');
 
-for (const [key, name, desc, address, province, district, phone, line, status, reason] of shops) {
+for (const [key, name, desc, address, province, district, phone, status, reason] of shops) {
   const email = `shop${key.slice(1)}@${DOMAIN}`;
   sql(`INSERT INTO users (email, password_hash, role, status, profile_completed, pdpa_accepted_at, created_at, last_login_at)
   VALUES (${q(email)}, ${q(PASSWORD_HASH)}, 'shop', 'active', 1, ${q(stamp(1200))}, ${q(stamp(1200))}, ${q(stamp(24))});`);
   sql(`SET @u_${key} = LAST_INSERT_ID();`);
   const doc = status === 'unsubmitted' ? null : '000000000000000000000000000000' + key.slice(1) + '.pdf';
-  sql(`INSERT INTO shops (owner_user_id, name, description, address, province_id, district_id, phone, line_id, verify_doc_file, verify_status, reject_reason, verify_submitted_at, verified_at, created_at)
-  VALUES (@u_${key}, ${q(name)}, ${q(desc)}, ${q(address)}, ${province}, ${district}, ${q(phone)}, ${q(line)}, ${q(doc)}, ${q(status)}, ${q(reason ?? null)},
+  sql(`INSERT INTO shops (owner_user_id, name, description, address, province_id, district_id, phone, verify_doc_file, verify_status, reject_reason, verify_submitted_at, verified_at, created_at)
+  VALUES (@u_${key}, ${q(name)}, ${q(desc)}, ${q(address)}, ${province}, ${district}, ${q(phone)}, ${q(doc)}, ${q(status)}, ${q(reason ?? null)},
           ${q(doc ? stamp(status === 'pending' ? 20 : 1100) : null)}, ${q(status === 'verified' ? stamp(1000) : null)}, ${q(stamp(1200))});`);
   sql(`SET @s_${key} = LAST_INSERT_ID();`);
 }
 
-for (const [key, name, birth, phone, line, skills, bio, areas] of seekers) {
+for (const [key, name, birth, phone, skills, bio, areas] of seekers) {
   const email = `seeker${key.slice(1)}@${DOMAIN}`;
   sql(`INSERT INTO users (email, password_hash, role, status, profile_completed, pdpa_accepted_at, created_at, last_login_at)
   VALUES (${q(email)}, ${q(PASSWORD_HASH)}, 'seeker', 'active', 1, ${q(stamp(900))}, ${q(stamp(900))}, ${q(stamp(5))});`);
   sql(`SET @u_${key} = LAST_INSERT_ID();`);
-  sql(`INSERT INTO seeker_profiles (user_id, full_name, birth_date, phone, line_id, skills, bio)
-  VALUES (@u_${key}, ${q(name)}, ${q(birth)}, ${q(phone)}, ${q(line)}, ${q(skills)}, ${q(bio)});`);
+  sql(`INSERT INTO seeker_profiles (user_id, full_name, birth_date, phone, skills, bio)
+  VALUES (@u_${key}, ${q(name)}, ${q(birth)}, ${q(phone)}, ${q(skills)}, ${q(bio)});`);
   sql(`INSERT INTO seeker_areas (user_id, province_id, district_id) VALUES ${areas.map(([p, d]) => `(@u_${key}, ${p}, ${q(d)})`).join(', ')};`);
 }
 
@@ -188,6 +188,49 @@ saved('p01', ['j06', 'j15', 'j01']);
 saved('p04', ['j08', 'j21']);
 function saved(seeker, list) {
   sql(`INSERT INTO saved_jobs (user_id, job_id) VALUES ${list.map((j) => `(@u_${seeker}, @j_${j})`).join(', ')};`);
+}
+
+// Chats: every accepted / completed application has a conversation (opened when the shop accepted)
+// [application, [[sender side, text, hours ago]]]; the seeker has not read the shop's newest message yet
+const chats = [
+  ['a02', [
+    ['shop', 'สวัสดีครับคุณมาลี ร้านรับเข้าทำงานกะดึกแล้วนะครับ', 9.5],
+    ['seeker', 'ขอบคุณค่ะ เริ่มคืนวันศุกร์นี้เลยไหมคะ', 9],
+    ['shop', 'ใช่ครับ มาก่อนสี่ทุ่มสัก 15 นาที ใส่เสื้อสีเข้ม เดี๋ยวมีเสื้อร้านให้', 8.5],
+  ]],
+  ['a04', [
+    ['shop', 'ยินดีต้อนรับค่ะ งานแฟร์ที่เซ็นทรัลเฟสติวัล ชั้น 1 นะคะ', 2.8],
+    ['seeker', 'รับทราบค่ะ ต้องเตรียมอะไรไปบ้างคะ', 2.5],
+    ['shop', 'แค่กางเกงสีดำกับรองเท้าผ้าใบค่ะ เสื้อทีมเตรียมให้แล้ว', 2],
+  ]],
+  ['a07', [
+    ['seeker', 'สวัสดีครับ ผมธนากร เคยทำ front office มาก่อน เริ่มงานได้เลยครับ', 0.8],
+    ['shop', 'ดีมากเลยค่ะ เข้ามาเซ็นเอกสารวันศุกร์ 9 โมงนะคะ', 0.5],
+  ]],
+  ['a13', [
+    ['shop', 'ขอบคุณที่มาช่วยนะครับ งานเรียบร้อยดีมาก', 47],
+    ['seeker', 'ขอบคุณครับ ถ้ามีงานอีกเรียกได้เลยครับ', 46],
+  ]],
+];
+const chatted = new Set(chats.map((c) => c[0]));
+for (const [key, , , status, , decidedAgo] of apps) {
+  if (!['accepted', 'completed'].includes(status)) continue;
+  const owner = `@u_${jobShop[appJob[key]]}`;
+  sql(`INSERT INTO conversations (application_id, seeker_user_id, shop_user_id, created_at)
+  VALUES (@a_${key}, @u_${appSeeker[key]}, ${owner}, ${q(stamp(decidedAgo))});`);
+  sql(`SET @c_${key} = LAST_INSERT_ID();`);
+  if (!chatted.has(key)) continue;
+  const lines = chats.find((c) => c[0] === key)[1];
+  let lastSeekerMsg = '0';
+  lines.forEach(([side, text, ago], i) => {
+    const sender = side === 'seeker' ? `@u_${appSeeker[key]}` : owner;
+    sql(`INSERT INTO chat_messages (conversation_id, sender_user_id, body, created_at) VALUES (@c_${key}, ${sender}, ${q(text)}, ${q(stamp(ago))});`);
+    sql(`SET @m_${key}_${i} = LAST_INSERT_ID();`);
+    if (side === 'seeker') lastSeekerMsg = `@m_${key}_${i}`;
+  });
+  const last = `@m_${key}_${lines.length - 1}`;
+  sql(`UPDATE conversations SET last_message_id = ${last}, last_message_at = ${q(stamp(lines[lines.length - 1][2]))},
+    shop_last_read_id = ${last}, seeker_last_read_id = ${lastSeekerMsg} WHERE id = @c_${key};`);
 }
 
 // Open reports for the admin queue

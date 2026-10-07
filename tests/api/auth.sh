@@ -119,7 +119,7 @@ expect_eq "under 18 code" "$(err_code)" "UNDERAGE"
 req "profile: district not in province" PUT /auth/onboarding/profile 400 "$SEEKER_TOKEN" '{"fullName":"ทดสอบ","birthDate":"2000-01-01","phone":"0812345678","areas":[{"provinceId":38,"districtId":1001}]}'
 req "profile: bad phone" PUT /auth/onboarding/profile 400 "$SEEKER_TOKEN" '{"fullName":"ทดสอบ","birthDate":"2000-01-01","phone":"12345","areas":[{"provinceId":1,"districtId":null}]}'
 req "profile: no areas" PUT /auth/onboarding/profile 400 "$SEEKER_TOKEN" '{"fullName":"ทดสอบ","birthDate":"2000-01-01","phone":"0812345678","areas":[]}'
-req "profile: ok" PUT /auth/onboarding/profile 200 "$SEEKER_TOKEN" '{"fullName":"สมชาย ใจดี","birthDate":"2000-02-29","phone":"081-234-5678","lineId":"somchai.j","areas":[{"provinceId":1,"districtId":1001},{"provinceId":1,"districtId":1002},{"provinceId":38,"districtId":null},{"provinceId":38,"districtId":5001}]}'
+req "profile: ok" PUT /auth/onboarding/profile 200 "$SEEKER_TOKEN" '{"fullName":"สมชาย ใจดี","birthDate":"2000-02-29","phone":"081-234-5678","areas":[{"provinceId":1,"districtId":1001},{"provinceId":1,"districtId":1002},{"provinceId":38,"districtId":null},{"provinceId":38,"districtId":5001}]}'
 expect_eq "profile: step / name" "$(json "$TMP/body" 'j.user.onboardingStep+"/"+j.user.displayName')" "terms/สมชาย ใจดี"
 SEEKER_ID=$(json "$TMP/body" j.user.id)
 expect_eq "profile: areas normalised" "$(root_sql "SELECT GROUP_CONCAT(CONCAT(province_id,':',IFNULL(district_id,'all')) ORDER BY province_id, district_id) FROM seeker_areas WHERE user_id=$SEEKER_ID")" "1:1001,1:1002,38:all"
@@ -148,7 +148,7 @@ req "register: shop" POST /auth/register 201 "" "{\"email\":\"$SHOP\",\"password
 SHOP_TOKEN=$(json "$TMP/body" j.token)
 req "role: shop" POST /auth/onboarding/role 200 "$SHOP_TOKEN" '{"role":"shop"}'
 req "shop profile: district mismatch" PUT /auth/onboarding/profile 400 "$SHOP_TOKEN" '{"shopName":"ร้านทดสอบ","address":"1 ถนนทดสอบ","provinceId":38,"districtId":1001,"phone":"021234567"}'
-req "shop profile: ok" PUT /auth/onboarding/profile 200 "$SHOP_TOKEN" '{"shopName":"ร้านกาแฟทดสอบ","address":"1 ถนนนิมมาน","provinceId":38,"districtId":5001,"phone":"053123456","lineId":"@testcafe"}'
+req "shop profile: ok" PUT /auth/onboarding/profile 200 "$SHOP_TOKEN" '{"shopName":"ร้านกาแฟทดสอบ","address":"1 ถนนนิมมาน","provinceId":38,"districtId":5001,"phone":"053123456"}'
 expect_eq "shop profile: verify status" "$(json "$TMP/body" 'j.user.shop.verifyStatus+"/"+j.user.displayName')" "unsubmitted/ร้านกาแฟทดสอบ"
 req "shop terms: ok" POST /auth/onboarding/accept-terms 200 "$SHOP_TOKEN" '{"acceptTerms":true,"acceptPdpa":true}'
 upload "shop cannot use seeker avatar API" /seeker/profile/avatar 403 "$SHOP_TOKEN" "$TMP/a.png"

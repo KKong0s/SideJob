@@ -27,7 +27,6 @@ export interface SeekerProfileInput {
   fullName: string;
   birthDate: string;
   phone: string;
-  lineId?: string;
   skills?: string;
   bio?: string;
   areas: { provinceId: number; districtId: number | null }[];
@@ -39,6 +38,5 @@ export interface ShopProfileInput {
   provinceId: number;
   districtId: number;
   phone: string;
-  lineId?: string;
   description?: string;
 }

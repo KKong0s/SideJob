@@ -35,7 +35,7 @@ ids() { body 'j.items.map(i=>i.title.split(" ")[0]).sort().join(",")'; }
 echo "== visibility"
 req "search: public, no token" GET "/jobs?q=$K" 200
 expect_eq "search: only visible jobs" "$(ids)" "A-cafe-weekend,B-bkk-weekday,C-chiangmai-other-district,D-one-day-event"
-expect_eq "search: no phone / LINE / description in list" "$(body 'JSON.stringify(j.items).includes("053") || "description" in j.items[0]')" "false"
+expect_eq "search: no phone / description in list" "$(body 'JSON.stringify(j.items).includes("053") || "description" in j.items[0]')" "false"
 expect_eq "search: shop + accepting" "$(body 'j.items[0].shop.name.length>0 && j.items.every(i=>i.acceptingApplications)')" "true"
 expect_eq "search: newest first" "$(body 'j.items[0].title.split(" ")[0]')" "D-one-day-event"
 

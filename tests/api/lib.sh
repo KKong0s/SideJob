@@ -77,7 +77,7 @@ new_seeker() {
   api POST /auth/register "" "{\"email\":\"$email\",\"password\":\"$PW\"}"
   TOKEN=$(json "$TMP/fix.out" j.token); USER_ID=$(json "$TMP/fix.out" j.user.id)
   api POST /auth/onboarding/role "$TOKEN" '{"role":"seeker"}'
-  api PUT /auth/onboarding/profile "$TOKEN" "{\"fullName\":\"ผู้หางาน $1\",\"birthDate\":\"${2:-2000-01-15}\",\"phone\":\"0812345678\",\"lineId\":\"seeker.$1\",\"areas\":[{\"provinceId\":38,\"districtId\":null}]}"
+  api PUT /auth/onboarding/profile "$TOKEN" "{\"fullName\":\"ผู้หางาน $1\",\"birthDate\":\"${2:-2000-01-15}\",\"phone\":\"0812345678\",\"areas\":[{\"provinceId\":38,\"districtId\":null}]}"
   api POST /auth/onboarding/accept-terms "$TOKEN" '{"acceptTerms":true,"acceptPdpa":true}'
 }
 
@@ -87,7 +87,7 @@ new_shop() {
   api POST /auth/register "" "{\"email\":\"$email\",\"password\":\"$PW\"}"
   TOKEN=$(json "$TMP/fix.out" j.token); USER_ID=$(json "$TMP/fix.out" j.user.id)
   api POST /auth/onboarding/role "$TOKEN" '{"role":"shop"}'
-  api PUT /auth/onboarding/profile "$TOKEN" "{\"shopName\":\"ร้านทดสอบ $1\",\"address\":\"1 ถนนนิมมาน\",\"provinceId\":38,\"districtId\":5001,\"phone\":\"053123456\",\"lineId\":\"@shop$1\"}"
+  api PUT /auth/onboarding/profile "$TOKEN" "{\"shopName\":\"ร้านทดสอบ $1\",\"address\":\"1 ถนนนิมมาน\",\"provinceId\":38,\"districtId\":5001,\"phone\":\"053123456\"}"
   SHOP_ID=$(json "$TMP/fix.out" j.user.shop.id)
   api POST /auth/onboarding/accept-terms "$TOKEN" '{"acceptTerms":true,"acceptPdpa":true}'
 }

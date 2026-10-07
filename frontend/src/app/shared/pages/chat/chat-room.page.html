@@ -1,0 +1,97 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start"><ion-back-button [defaultHref]="backHref()" text=""></ion-back-button></ion-buttons>
+    <ion-title>
+      @if (conversation(); as c) {
+        <div class="title">
+          <span class="name">{{ c.other.name }}</span>
+          <span class="job">{{ c.job.title }}</span>
+        </div>
+      } @else {
+        แชท
+      }
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="chat-content">
+  <app-page-state [state]="state()" (retry)="load()">
+    <ion-infinite-scroll position="top" [disabled]="!hasMore()" (ionInfinite)="loadOlder($event)">
+      <ion-infinite-scroll-content loadingText="กำลังโหลดข้อความก่อนหน้า..."></ion-infinite-scroll-content>
+    </ion-infinite-scroll>
+
+    <div class="messages">
+      @if (!messages().length) {
+        <p class="empty">ยังไม่มีข้อความ ทักทายกันได้เลย</p>
+      }
+      @for (m of messages(); track m.id; let i = $index) {
+        @if (showDate(i)) {
+          <div class="date"><span>{{ dateLabel(m) }}</span></div>
+        }
+        <div class="row" [class.mine]="m.senderId === me()">
+          <div class="bubble" [class.image]="m.imagePath">
+            @if (m.imagePath) {
+              <button type="button" class="photo" (click)="viewImage.set(uploadsUrl + '/' + m.imagePath)" aria-label="ดูรูปขนาดใหญ่">
+                <img [src]="uploadsUrl + '/' + m.imagePath" alt="รูปในแชท" loading="lazy" />
+              </button>
+            } @else {
+              <span class="text">{{ m.body }}</span>
+            }
+          </div>
+          <span class="meta">
+            {{ time(m) }}
+            @if (m.id === lastMineId() && (conversation()?.otherLastReadId ?? 0) >= m.id) { · อ่านแล้ว }
+          </span>
+        </div>
+      }
+    </div>
+  </app-page-state>
+
+  <ion-modal [isOpen]="!!viewImage()" (didDismiss)="viewImage.set(null)">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar color="dark">
+          <ion-buttons slot="end">
+            <ion-button (click)="viewImage.set(null)" aria-label="ปิด"><ion-icon slot="icon-only" name="close"></ion-icon></ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content color="dark">
+        <div class="viewer"><img [src]="viewImage()" alt="รูปในแชท" /></div>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+</ion-content>
+
+@if (conversation(); as c) {
+  <ion-footer>
+    @if (c.canSend) {
+      <ion-toolbar class="composer">
+        <ion-buttons slot="start">
+          <ion-button (click)="imageInput.click()" [disabled]="sending()" aria-label="ส่งรูป">
+            <ion-icon slot="icon-only" name="image-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+        <ion-textarea
+          class="input"
+          placeholder="พิมพ์ข้อความ"
+          [autoGrow]="true"
+          [rows]="1"
+          [maxlength]="2000"
+          [(ngModel)]="draft"
+          (keydown)="onKeydown($event)"
+        ></ion-textarea>
+        <ion-buttons slot="end">
+          <ion-button (click)="sendText()" [disabled]="sending() || !draft.trim()" aria-label="ส่ง">
+            @if (sending()) { <ion-spinner name="dots"></ion-spinner> } @else { <ion-icon slot="icon-only" name="send"></ion-icon> }
+          </ion-button>
+        </ion-buttons>
+        <input #imageInput type="file" accept="image/jpeg,image/png" hidden (change)="onImageSelected($event)" />
+      </ion-toolbar>
+    } @else {
+      <ion-toolbar>
+        <p class="closed">แชทนี้ปิดแล้ว (ใบสมัครถูกยกเลิกหรือบัญชีถูกระงับ) อ่านข้อความเดิมได้แต่ส่งเพิ่มไม่ได้</p>
+      </ion-toolbar>
+    }
+  </ion-footer>
+}

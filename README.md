@@ -20,14 +20,19 @@ npm install
 npm start                   # http://localhost:4200  (หรือ `ionic serve` -> :8100)
 ```
 
+- `npm start` / `npm run build` เรียก Angular CLI ผ่าน `frontend/scripts/ng.mjs` ซึ่งใช้ Sass แบบ JavaScript
+  เพราะ Windows **Smart App Control** บล็อก `dart.exe` ของ Sass ตัวปกติ (error `spawn UNKNOWN`)
+- **อัปเดตจากเวอร์ชันก่อน** (ฐานข้อมูลเดิม ข้อมูลไม่หาย): `bash database/migrate.sh` แล้ว `docker compose restart nodered`
+
 | บริการ | URL |
 |---|---|
 | Node-RED editor | http://localhost:1881 (login ตาม `NODE_RED_ADMIN_USER` / รหัสที่ใช้สร้าง hash) |
 | API | http://localhost:1881/api/health |
+| แชท (WebSocket) | ws://localhost:1881/ws/chat |
 | MySQL | `localhost:3307` (user ของแอป: `DB_USER`) |
 | phpMyAdmin (dev เท่านั้น) | http://localhost:8081 — login ด้วย `DB_USER` (สิทธิ์เท่าแอป) หรือ `root` |
 
-ตั้งพอร์ตเป็น 3307 / 1881 / 8081 เพื่อไม่ให้ชนกับ MySQL / Node-RED ตัวอื่นในเครื่อง ถ้าจะเปลี่ยนให้แก้ใน `.env` และ `frontend/src/environments/environment.ts`
+ตั้งพอร์ตเป็น 3307 / 1881 / 8081 เพื่อไม่ให้ชนกับ MySQL / Node-RED ตัวอื่นในเครื่อง ถ้าจะเปลี่ยนให้แก้ใน `.env` และ `frontend/src/environments/environment.ts` (ทั้ง `apiUrl`, `uploadsUrl` และ `wsUrl`)
 
 บัญชีแอดมินตั้งต้น (สำหรับ dev): `admin@sidejob.local` / `Admin@1234` (ต้องเปลี่ยนก่อนใช้งานจริง)
 
@@ -56,7 +61,7 @@ bash database/demo/seed-demo.sh   # รันซ้ำได้ ข้อมู�
 | `shop13@demo.sidejob.local` | อุดร แฟชั่นมอลล์ | อุดรธานี | ไม่ผ่านการยืนยัน (มีเหตุผล) |
 | `shop14@demo.sidejob.local` | ร้านน้ำปั่นแม่ริม | เชียงใหม่ | ยังไม่ส่งเอกสาร |
 | `seeker01@demo.sidejob.local` | สมชาย ใจดี | กรุงเทพฯ | มีใบสมัครรอพิจารณา · งานบันทึกไว้ |
-| `seeker02@demo.sidejob.local` | มาลี สวยงาม | กรุงเทพฯ | ถูกรับเข้าทำงาน (เห็นเบอร์/LINE ร้าน) |
+| `seeker02@demo.sidejob.local` | มาลี สวยงาม | กรุงเทพฯ | ถูกรับเข้าทำงาน · มีแชทกับร้านที่ยังไม่อ่าน |
 | `seeker03@demo.sidejob.local` | อนุชา คนขยัน | ขอนแก่น / โคราช | งานเสร็จ รีวิวร้านได้ |
 | `seeker04@demo.sidejob.local` | ปิยะนุช ล้านนา | เชียงใหม่ | ถูกรับ + รอพิจารณา |
 | `seeker05@demo.sidejob.local` | ธนากร ทะเลใส | ภูเก็ต / ชลบุรี | ถูกรับเข้าทำงาน |
@@ -104,5 +109,6 @@ bash tests/api/search.sh        # Phase 4: ค้นหา / ตัวกรอ�
 bash tests/api/applications.sh  # Phase 5: สมัคร / ยกเลิก / รับ / ปฏิเสธ / ช่องทางติดต่อ
 bash tests/api/notifications.sh # Phase 6: แจ้งเตือน
 bash tests/api/phase7.sh        # Phase 7: งานเสร็จ / รีวิว / รายงาน / แอดมิน (ผู้ใช้ ประกาศ รายงาน หมวดหมู่)
+bash tests/api/chat.sh          # แชท: REST + WebSocket
 cd frontend && npx ng test --watch=false && npx ng lint
 ```

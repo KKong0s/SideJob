@@ -4,10 +4,9 @@ import { PublicJob } from './search.model';
 
 export type ApplicationStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed';
 
-/** Phone / LINE of the other side; only sent by the API once the application is accepted or completed */
+/** Phone of the other side; only sent by the API once the application is accepted or completed */
 export interface Contact {
   phone: string | null;
-  lineId: string | null;
 }
 
 interface ApplicationBase {

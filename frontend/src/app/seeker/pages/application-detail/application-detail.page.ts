@@ -1,5 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   AlertController,
   IonBackButton,
@@ -29,6 +29,7 @@ import { PageStateComponent } from '../../../shared/components/page-state/page-s
 import { APPLICATION_STATUS_COLOR, APPLICATION_STATUS_LABEL, MyApplication } from '../../../shared/models/application.model';
 import { daysText, locationText, timeText, wageText } from '../../../shared/models/job.model';
 import { ReviewInput } from '../../../shared/models/review.model';
+import { ChatService } from '../../../shared/services/chat.service';
 import { ReviewService } from '../../../shared/services/review.service';
 import { SeekerService } from '../../../shared/services/seeker.service';
 import { thaiDateTime } from '../../../shared/utils/format';
@@ -59,11 +60,11 @@ import { Loader } from '../../../shared/utils/loader';
             <ion-card color="light">
               <ion-card-header><ion-card-title>ติดต่อร้าน</ion-card-title></ion-card-header>
               <ion-card-content>
-                <app-contact-buttons [contact]="a.contact"></app-contact-buttons>
+                <app-contact-buttons [contact]="a.contact" chatLabel="แชทกับร้าน" (chat)="openChat()"></app-contact-buttons>
               </ion-card-content>
             </ion-card>
           } @else if (a.status === 'pending') {
-            <ion-note class="ion-padding-horizontal block">เบอร์โทรและ LINE ของร้านจะแสดงที่นี่เมื่อร้านรับคุณเข้าทำงาน</ion-note>
+            <ion-note class="ion-padding-horizontal block">เบอร์โทรของร้านและปุ่มแชทจะแสดงที่นี่เมื่อร้านรับคุณเข้าทำงาน</ion-note>
           }
 
           <ion-list lines="full">
@@ -155,6 +156,8 @@ export class ApplicationDetailPage {
   private readonly alerts = inject(AlertController);
   private readonly toasts = inject(ToastController);
   private readonly reviews = inject(ReviewService);
+  private readonly chat = inject(ChatService);
+  private readonly router = inject(Router);
 
   readonly id = input.required<string>();
   readonly appId = computed(() => Number(this.id()));
@@ -167,6 +170,15 @@ export class ApplicationDetailPage {
   readonly daysText = daysText;
   readonly timeText = timeText;
   readonly thaiDateTime = thaiDateTime;
+
+  async openChat(): Promise<void> {
+    try {
+      const conversation = await this.chat.byApplication(this.appId());
+      await this.router.navigate(['/chat', conversation.id]);
+    } catch {
+      // the interceptor shows the error toast
+    }
+  }
 
   ionViewWillEnter(): void {
     void this.app.load();

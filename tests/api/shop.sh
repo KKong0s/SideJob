@@ -12,7 +12,7 @@ req "profile: seeker forbidden" GET /shop/profile 403 "$SEEKER_TOKEN"
 req "profile: ok" GET /shop/profile 200 "$SHOP_TOKEN"
 expect_eq "profile: status / province" "$(body 'j.shop.verifyStatus+"/"+j.shop.provinceName+"/"+j.shop.hasVerifyDoc')" "unsubmitted/เชียงใหม่/false"
 req "update: district mismatch" PUT /shop/profile 400 "$SHOP_TOKEN" '{"shopName":"ร้านใหม่","address":"2 ถนน","provinceId":38,"districtId":1001,"phone":"053123456"}'
-req "update: ok" PUT /shop/profile 200 "$SHOP_TOKEN" '{"shopName":"ร้านกาแฟใหม่","address":"2 ถนนห้วยแก้ว","provinceId":38,"districtId":5001,"phone":"053999999","lineId":"@newcafe","description":"กาแฟดี"}'
+req "update: ok" PUT /shop/profile 200 "$SHOP_TOKEN" '{"shopName":"ร้านกาแฟใหม่","address":"2 ถนนห้วยแก้ว","provinceId":38,"districtId":5001,"phone":"053999999","description":"กาแฟดี"}'
 expect_eq "update: saved" "$(body 'j.shop.name+"/"+j.shop.phone+"/"+j.shop.description')" "ร้านกาแฟใหม่/053999999/กาแฟดี"
 
 echo "== shop image"

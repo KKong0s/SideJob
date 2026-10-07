@@ -1,7 +1,7 @@
 import { Job, WageUnit, Weekday } from './job.model';
 import { Rating } from './review.model';
 
-/** Job as seekers see it (search, saved jobs, detail). Never contains shop phone / LINE. */
+/** Job as seekers see it (search, saved jobs, detail). Never contains the shop phone. */
 export interface PublicJob extends Job {
   /** false when closed, expired or the work dates are over */
   acceptingApplications: boolean;
@@ -56,7 +56,6 @@ export interface SeekerProfile {
   fullName: string;
   birthDate: string;
   phone: string | null;
-  lineId: string | null;
   skills: string | null;
   bio: string | null;
   avatarPath: string | null;

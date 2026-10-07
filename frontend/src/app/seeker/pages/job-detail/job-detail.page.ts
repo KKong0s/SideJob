@@ -147,7 +147,7 @@ export class JobDetailPage {
     if (!job) return;
     const alert = await this.alerts.create({
       header: 'สมัครงานนี้?',
-      message: `ร้าน ${job.shop.name} จะเห็นชื่อ อายุ ทักษะ และแนะนำตัวของคุณ ส่วนเบอร์โทรและ LINE จะเปิดให้ร้านเห็นหลังรับคุณเข้าทำงาน`,
+      message: `ร้าน ${job.shop.name} จะเห็นชื่อ อายุ ทักษะ และแนะนำตัวของคุณ ส่วนเบอร์โทรจะเปิดให้ร้านเห็น และแชทกันได้ หลังรับคุณเข้าทำงาน`,
       buttons: [
         { text: 'ยกเลิก', role: 'cancel' },
         { text: 'สมัครเลย', handler: () => void this.sendApplication() },

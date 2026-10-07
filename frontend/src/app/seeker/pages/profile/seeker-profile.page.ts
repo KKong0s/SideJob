@@ -101,16 +101,13 @@ import { Loader } from '../../../shared/utils/loader';
                     <ion-label><p>เบอร์โทร</p><h3>{{ p.phone || '-' }}</h3></ion-label>
                   </ion-item>
                   <ion-item>
-                    <ion-label><p>LINE ID</p><h3>{{ p.lineId || '-' }}</h3></ion-label>
-                  </ion-item>
-                  <ion-item>
                     <ion-label class="ion-text-wrap"><p>ทักษะ / ประสบการณ์</p><h3>{{ p.skills || '-' }}</h3></ion-label>
                   </ion-item>
                   <ion-item lines="none">
                     <ion-label class="ion-text-wrap"><p>แนะนำตัว</p><h3 class="pre">{{ p.bio || '-' }}</h3></ion-label>
                   </ion-item>
                 </ion-list>
-                <ion-note>ร้านจะเห็นเบอร์โทรและ LINE ID หลังรับคุณเข้าทำงานเท่านั้น</ion-note>
+                <ion-note>ร้านจะเห็นเบอร์โทรหลังรับคุณเข้าทำงานเท่านั้น และแชทกับคุณได้</ion-note>
               </ion-card-content>
             </ion-card>
 

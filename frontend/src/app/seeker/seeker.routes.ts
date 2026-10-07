@@ -33,6 +33,10 @@ export const SEEKER_ROUTES: Routes = [
         loadComponent: () => import('./pages/applications/applications.page').then((m) => m.ApplicationsPage),
       },
       {
+        path: 'chats',
+        loadComponent: () => import('../shared/pages/chat/chat-list.page').then((m) => m.ChatListPage),
+      },
+      {
         path: 'profile',
         loadComponent: () => import('./pages/profile/seeker-profile.page').then((m) => m.SeekerProfilePage),
       },
