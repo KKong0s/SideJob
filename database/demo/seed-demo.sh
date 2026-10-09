@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Loads demo data into the running stack (safe to run again: old demo data is removed first).
-# Accounts: shop01..shop14@demo.sidejob.local and seeker01..seeker06@demo.sidejob.local, password Demo@1234
+# Accounts: shop01..shop14, store001..store100 (all 77 provinces) and seeker01..seeker06 @demo.sidejob.local, password Demo@1234
 # Usage (from the repo root): bash database/demo/seed-demo.sh
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -34,9 +34,14 @@ docker exec sidejob-nodered sh -c '
   for n in 01 02 03 04 05 06 07 08 09 10 11 12 13; do
     printf "%%PDF-1.4\n%% SideJob demo verification document for shop $n\n1 0 obj<<>>endobj\ntrailer<<>>\n%%%%EOF\n" \
       > /data/uploads/private/verify/000000000000000000000000000000$n.pdf
+  done
+  for n in $(seq -w 1 100); do
+    printf "%%PDF-1.4\n%% SideJob demo verification document for store $n\n1 0 obj<<>>endobj\ntrailer<<>>\n%%%%EOF\n" \
+      > /data/uploads/private/verify/b0000000000000000000000000000$n.pdf
   done'
 
 echo "demo: done"
 echo "  shops   : shop01..shop14@demo.sidejob.local  (01-10 verified, 11-12 pending, 13 rejected, 14 no document)"
+echo "  stores  : store001..store100@demo.sidejob.local (one or more in every province, mostly verified with jobs)"
 echo "  seekers : seeker01..seeker06@demo.sidejob.local"
 echo "  password: Demo@1234"

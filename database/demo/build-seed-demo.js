@@ -252,5 +252,8 @@ for (const [who, type, message, link, app, ago] of notes) {
   sql(`INSERT INTO notifications (user_id, type, message, link, created_at) VALUES (@u_${who}, ${q(type)}, ${q(message)}, ${linkSql}, ${q(stamp(ago))});`);
 }
 
+// 100 more shops covering all 77 provinces (store001..store100)
+require('./bulk-shops')({ sql, q, stamp, day, weekdaysBetween, passwordHash: PASSWORD_HASH, domain: DOMAIN });
+
 sql('COMMIT;');
 process.stdout.write(out.join('\n') + '\n');
