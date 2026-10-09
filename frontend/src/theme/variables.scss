@@ -1,6 +1,53 @@
-// For information on how to create your own theme, please refer to:
+// SideJob theme: clean line art + lime green (light mode only)
 // https://ionicframework.com/docs/theming/
 
 :root {
-  --ion-font-family: 'Noto Sans Thai', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Fonts: Anuphan for body text, Prompt for headings / wages / buttons (bundled via @fontsource) */
+  --ion-font-family: 'Anuphan', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sj-font-heading: 'Prompt', 'Anuphan', system-ui, sans-serif;
+
+  /* Primary: dark green */
+  --ion-color-primary: #1f3a13;
+  --ion-color-primary-rgb: 31, 58, 19;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #1b3311;
+  --ion-color-primary-tint: #354e2b;
+
+  /* Secondary: lime. Only as a background behind #1F3A13 text, never as text on white */
+  --ion-color-secondary: #a6e36b;
+  --ion-color-secondary-rgb: 166, 227, 107;
+  --ion-color-secondary-contrast: #1f3a13;
+  --ion-color-secondary-contrast-rgb: 31, 58, 19;
+  --ion-color-secondary-shade: #92c85e;
+  --ion-color-secondary-tint: #afe67a;
+
+  /* Medium: muted text (5.9:1 on white) */
+  --ion-color-medium: #5d6754;
+  --ion-color-medium-rgb: 93, 103, 84;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #525b4a;
+  --ion-color-medium-tint: #6d7665;
+
+  /* Light: chip / secondary-button surface */
+  --ion-color-light: #eef0e8;
+  --ion-color-light-rgb: 238, 240, 232;
+  --ion-color-light-contrast: #1f2a16;
+  --ion-color-light-contrast-rgb: 31, 42, 22;
+  --ion-color-light-shade: #d1d3cc;
+  --ion-color-light-tint: #f0f2ea;
+
+  --ion-background-color: #ffffff;
+  --ion-background-color-rgb: 255, 255, 255;
+  --ion-text-color: #1f2a16;
+  --ion-text-color-rgb: 31, 42, 22;
+
+  --ion-toolbar-background: #ffffff;
+  --ion-tab-bar-background: #ffffff;
+  --ion-tab-bar-color: #5d6754;
+  --ion-tab-bar-color-selected: #1f3a13;
+  --ion-item-background: #ffffff;
+  --ion-card-background: #ffffff;
+  --ion-border-color: #eceee6;
 }

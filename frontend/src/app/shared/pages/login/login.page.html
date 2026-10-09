@@ -1,22 +1,23 @@
 <ion-content class="auth-bg">
   <div class="auth-shell">
-    <div class="auth-card">
-      <div class="auth-intro">
-        <div class="auth-logo" aria-hidden="true">S</div>
-        @if (step() === 'email') {
-          <h1>เข้าสู่ระบบ</h1>
-          <p>ด้วยบัญชี SideJob ของคุณ เพื่อหางานพาร์ทไทม์ใกล้บ้าน หรือประกาศหาคนช่วยงานร้าน</p>
-        } @else {
-          <h1>ยินดีต้อนรับ</h1>
-          <button type="button" class="account-chip" (click)="back()" aria-label="เปลี่ยนอีเมล">
-            <span class="chip-avatar" aria-hidden="true">{{ initial() }}</span>
-            <span class="chip-email">{{ form.controls.email.value }}</span>
-            <span class="chip-caret" aria-hidden="true">▾</span>
-          </button>
-        }
-      </div>
+    <img class="auth-art" src="assets/illustrations/student-phone.svg" alt="" width="320" height="260" />
 
-      <form [formGroup]="form" (ngSubmit)="submit()" class="auth-main">
+    <div class="auth-panel">
+      <app-brand-logo class="auth-logo"></app-brand-logo>
+
+      @if (step() === 'email') {
+        <h1>เข้าสู่ระบบ</h1>
+        <p class="auth-lead">ด้วยบัญชี SideJob ของคุณ เพื่อหางานพาร์ทไทม์ใกล้บ้าน หรือประกาศหาคนช่วยงานร้าน</p>
+      } @else {
+        <h1>ยินดีต้อนรับ</h1>
+        <button type="button" class="account-chip" (click)="back()" aria-label="เปลี่ยนอีเมล">
+          <span class="chip-avatar" aria-hidden="true">{{ initial() }}</span>
+          <span class="chip-email">{{ form.controls.email.value }}</span>
+          <span class="chip-caret" aria-hidden="true">▾</span>
+        </button>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
         @if (step() === 'email') {
           <ion-input
             #emailInput
@@ -49,20 +50,19 @@
           <ion-note color="danger">{{ error() }}</ion-note>
         }
 
-        <div class="auth-actions">
-          @if (step() === 'email') {
-            <a class="auth-link" routerLink="/register">สร้างบัญชี</a>
-            <ion-button type="submit" shape="round">ถัดไป</ion-button>
-          } @else {
-            <button type="button" class="auth-link" (click)="back()">ย้อนกลับ</button>
-            <ion-button type="submit" shape="round" [disabled]="busy()">
-              @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { เข้าสู่ระบบ }
-            </ion-button>
-          }
-        </div>
+        @if (step() === 'email') {
+          <ion-button type="submit" expand="block">ถัดไป</ion-button>
+        } @else {
+          <ion-button type="submit" expand="block" [disabled]="busy()">
+            @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { เข้าสู่ระบบ }
+          </ion-button>
+          <ion-button type="button" expand="block" color="light" (click)="back()">ย้อนกลับ</ion-button>
+        }
       </form>
-    </div>
 
-    <app-google-auth (signedIn)="goHome($event)"></app-google-auth>
+      <app-google-auth (signedIn)="goHome($event)"></app-google-auth>
+
+      <p class="auth-switch">ยังไม่มีบัญชี? <a routerLink="/register">สร้างบัญชี</a></p>
+    </div>
   </div>
 </ion-content>

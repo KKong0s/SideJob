@@ -109,6 +109,18 @@ export function wageText(job: WageFields): string {
   return `${baht(job.wage)}/${WAGE_UNIT_LABEL[job.wageUnit]}`;
 }
 
+const WAGE_UNIT_SHORT: Record<WageUnit, string> = {
+  hour: 'ชม.',
+  day: 'วัน',
+  job: 'งาน',
+};
+const wagePillFmt = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 });
+
+/** Compact wage for pills: "฿55/ชม." */
+export function wageShortText(job: WageFields): string {
+  return `฿${wagePillFmt.format(job.wage)}/${WAGE_UNIT_SHORT[job.wageUnit]}`;
+}
+
 /** "ทุกวัน", "จ.–ศ.", "ส. อา." */
 export function weekdaysText(days: Weekday[]): string {
   if (days.length === 7) return 'ทุกวัน';

@@ -3,6 +3,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { Router, RouterLink } from '@angular/router';
 import { IonButton, IonContent, IonInput, IonInputPasswordToggle, IonNote, IonSpinner } from '@ionic/angular';
 
+import { BrandLogoComponent } from '../../components/brand-logo/brand-logo.component';
 import { GoogleAuthComponent } from '../../components/google-auth/google-auth.component';
 import { SessionUser } from '../../models/session.model';
 import { AuthService } from '../../services/auth.service';
@@ -19,7 +20,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-register',
   templateUrl: 'register.page.html',
-  imports: [ReactiveFormsModule, RouterLink, IonContent, IonInput, IonInputPasswordToggle, IonButton, IonNote, IonSpinner, GoogleAuthComponent],
+  imports: [ReactiveFormsModule, RouterLink, IonContent, IonInput, IonInputPasswordToggle, IonButton, IonNote, IonSpinner, GoogleAuthComponent, BrandLogoComponent],
 })
 export class RegisterPage {
   private readonly auth = inject(AuthService);

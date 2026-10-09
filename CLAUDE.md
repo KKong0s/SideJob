@@ -270,11 +270,119 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 - เขียนกราฟเองด้วย SVG ไม่เพิ่ม library (`admin/components/line-chart`, `bar-list`) มี tooltip ตอนชี้ ใช้ลูกศรซ้าย/ขวาบนคีย์บอร์ดได้ ปุ่ม "ดูเป็นตาราง" ทุกกราฟ และสีรองรับโหมดมืด
 
 ### หน้าเข้าสู่ระบบแบบใหม่ (ตามที่สั่ง 2026-10-10)
-- หน้า login / สมัครสมาชิก เป็นการ์ดบนพื้นเทาอ่อน (ซ้ายหัวข้อ ขวาฟอร์ม, มือถือเรียงบนลงล่างเต็มจอ) ใช้โลโก้ "S" ของ SideJob ไม่ใช้โลโก้ Google
+- (หน้าตาถูกแทนด้วยดีไซน์ "ลายเส้นคลีน + เขียวมะนาว" ด้านล่างแล้ว)
 - login เป็น 2 ขั้น: อีเมล → "ถัดไป" → รหัสผ่าน (แสดงอีเมลเป็นชิป กดเพื่อเปลี่ยนได้) รหัสผิดจะล้างช่องให้กรอกใหม่ ไม่ได้แก้ API
 - Google Sign-In: ผู้ใช้ขอพักไว้ก่อน ปุ่มยังซ่อนอยู่เพราะยังไม่ได้ใส่ `GOOGLE_CLIENT_ID` (โค้ดพร้อมแล้ว ใส่ Client ID ตาม README ก็ใช้ได้)
+
+### ดีไซน์ "ลายเส้นคลีน + เขียวมะนาว" (ตามสเปกท้ายไฟล์, ทำ 2026-10-10)
+- ตัดสินใจกับผู้ใช้: **โหมดสว่างอย่างเดียว** (เอา dark mode อัตโนมัติออก) และ**ฝังฟอนต์ในแอป** ด้วย `@fontsource/prompt` + `@fontsource/anuphan` แทน Google Fonts (ใช้ได้ออฟไลน์สำหรับ Phase 9) เอา Noto Sans Thai ออก
+- Token อยู่ใน `theme/variables.scss` (สี Ionic) และ `global.scss` (`--sj-surface`, `--sj-chip`, `--sj-border`, `--sj-divider`, `--sj-selected`, `--sj-text*`, `--sj-dark`, `--sj-lime`, `--sj-font-heading`) พร้อมสไตล์กลางของปุ่ม / input / searchbar / ชิป / การ์ด / tab bar / focus ring
+  - ion-input, ion-searchbar, ion-header ของ Ionic เป็น scoped component ต้องใส่ `:root` นำหน้า selector ถึงจะชนะสไตล์ของ Ionic
+- Component ใหม่: `brand-logo`, `top-nav` (จอ ≥ 992px: โลโก้ | เมนู pill | กระดิ่ง | avatar → โปรไฟล์ แทน tab bar) ใช้ทั้ง seeker และ shop; จอกว้างซ่อนกระดิ่งในหัวแต่ละหน้าและจัดเนื้อหาในคอลัมน์ 1280px
+- `job-card` เป็นแบบแถว (ชื่องาน / ร้าน · เวลาที่ลง / พื้นที่ · วันเวลา + ป้ายค่าจ้าง "฿55/ชม." จาก `wageShortText()`) กดด้วยคีย์บอร์ดได้
+- หน้าค้นหางาน: hero + ภาพลายเส้น `assets/illustrations/student-phone.svg`, ปุ่ม "ค้นหางาน" ค้นทันที, ปุ่มพื้นที่เปิด area picker เดิม, **ปุ่มตัวกรองเดิมย้ายเป็นชิป "ตัวกรอง" ตัวแรก** (สเปกไม่ได้พูดถึง), รายการงานเป็น grid
+- login / register: แผง #F6F6F1 กว้าง 440px + ภาพลายเส้นด้านข้างบนจอกว้าง คง login 2 ขั้น; ปุ่ม Google เป็นปุ่มทางการของ Google (iframe) เปลี่ยนเป็นพื้น #EEF0E8 ไม่ได้ จึงคงทรงแคปซูลของ Google ไว้
+- แอดมิน: เปลี่ยนแค่สี/ฟอนต์ กราฟแท่งเป็นเขียวเข้ม (`--viz-bar`) กราฟเส้น 3 สียังใช้ชุดสีเดิม
 
 ### สิ่งที่ยังไม่ได้ทำ / ข้อจำกัดตอนนี้
 - Phase 9 ทั้งหมด (Capacitor Android/iOS, Google Sign-In แบบ native, Capacitor Camera, ซ่อนส่วนแอดมินในแอปมือถือ) — รอคำสั่ง
 - ข้อมูลตัวอย่างไม่มีรูปร้าน/รูปงาน (อัปโหลดเพิ่มเองได้จากหน้าร้าน)
 - ทดสอบหน้าจอใน browser ยังไม่ครบทุกหน้า (ที่เหลือตรวจด้วย build, lint, unit test และ API test)
+
+ปรับดีไซน์ทั้งแอป SideJob (frontend Ionic + Angular) ให้เป็นสไตล์ "ลายเส้นคลีน + เขียวมะนาว" ตามสเปกด้านล่าง
+เปลี่ยนเฉพาะหน้าตา (theme, SCSS, template) ห้ามแก้ logic, service, API, guard หรือ backend
+ก่อนลงมือให้เสนอแผนสั้น ๆ ว่าจะแก้ไฟล์ไหนบ้าง แล้วรอฉันอนุมัติ ทำเสร็จแล้วสรุปสิ่งที่เปลี่ยนและวิธีทดสอบ แล้ว commit
+
+## 1. Design tokens
+ฟอนต์ (Google Fonts โหลดใน index.html)
+- หัวข้อ / ตัวเลขค่าจ้าง / ปุ่ม: "Prompt" น้ำหนัก 500, 600, 700
+- เนื้อหา: "Anuphan" น้ำหนัก 400, 500, 600 → ตั้งเป็น --ion-font-family
+
+สี
+- primary (เขียวเข้ม)   #1F3A13  rgb 31,58,19   contrast #FFFFFF  shade #1B3311  tint #354E2B
+- secondary (เขียวมะนาว) #A6E36B  rgb 166,227,107 contrast #1F3A13 shade #92C85E  tint #AFE67A
+- ตัวอักษรหลัก #1F2A16 · ตัวอักษรรอง #4A5541 · ตัวอักษรจาง #5D6754
+- พื้นหลังหน้า #FFFFFF · แผงเน้น (hero) #F6F6F1 · พื้นชิป/ปุ่มรอง #EEF0E8
+- เส้นขอบ input #E2E5DA · เส้นคั่นรายการ #ECEEE6 · แถวที่เลือก #F2F9E8
+- กติกา: ห้ามใช้เขียวมะนาวเป็นสีตัวอักษรบนพื้นขาว (contrast ไม่ผ่าน) ใช้เป็นพื้นหลังที่มีตัวอักษร #1F3A13 เท่านั้น
+
+รูปทรง
+- ปุ่ม, input, ชิป, nav item: ทรงแคปซูล (border-radius 999px)
+- การ์ด/แถวรายการ: radius 18px · แผง hero: radius 32px
+- ความสูงปุ่มและ input หลัก 52px, ชิป 42px, ปุ่มไอคอน 46px (วงกลม) — ทุกจุดกดต้องไม่ต่ำกว่า 44px
+- ไม่มีเงาหนัก ไม่มี gradient
+
+ตั้งค่าทั้งหมดใน src/theme/variables.scss (--ion-color-primary/secondary ครบชุด, --ion-font-family, --ion-background-color, --ion-text-color) และสร้าง CSS custom properties ของเราเอง (เช่น --sj-surface, --sj-chip, --sj-border) ใน global.scss เพื่อใช้ซ้ำ
+
+## 2. Component styles (ทำใน global.scss ให้ใช้ทั้งแอป)
+- ion-button หลัก: พื้น primary ตัวอักษรขาว ฟอนต์ Prompt 600 16px ทรงแคปซูล สูง 52px
+- ion-button color="secondary": พื้นเขียวมะนาว ตัวอักษร #1F3A13
+- ion-input / ion-searchbar: พื้นขาว ขอบ 1.5px #E2E5DA ทรงแคปซูล สูง 52px มีไอคอนแว่นขยาย/ไอคอนนำหน้า สีไอคอน #4A5541
+- ชิปหมวดหมู่: ไม่ได้เลือก = พื้น #EEF0E8 ตัวอักษร #1F2A16 / เลือกแล้ว = พื้น #1F3A13 ตัวอักษรขาว ตัวหนา
+- กระดิ่งแจ้งเตือน: ปุ่มวงกลม 46px พื้น #EEF0E8 badge วงกลม 18px พื้นเขียวมะนาว ตัวเลข #1F3A13
+- avatar: วงกลม 46px พื้น #1F3A13 ตัวอักษรขาว
+- โลโก้: จุดวงกลม 14px สีเขียวมะนาว ขอบ 3px #1F3A13 + คำว่า "SideJob" ฟอนต์ Prompt 700 24px สี #1F3A13
+
+## 3. Layout
+- จอกว้าง (≥ 992px): header ด้านบน = โลโก้ | เมนูแบบ pill (ค้นหางาน, งานที่บันทึก, ใบสมัครของฉัน, แชท — อันที่เลือกอยู่ใช้พื้น #EEF0E8 ตัวอักษร #1F3A13 หนา) | กระดิ่ง | avatar
+  ซ่อน ion-tab-bar ด้านล่าง
+- จอมือถือ: คง ion-tab-bar ด้านล่างไว้ พื้นขาว เส้นบน #ECEEE6 แท็บที่เลือกสี #1F3A13 ที่เหลือ #5D6754
+- เนื้อหาอยู่ใน container กว้างสุด 1280px padding ข้าง 24px (มือถือ 16px)
+- ใช้ร่วมกันทั้งฝั่ง seeker และ shop ส่วนฝั่ง admin ใช้แค่สีและฟอนต์
+
+## 4. หน้าค้นหางาน (seeker/search) — หน้าหลักของสไตล์นี้
+1) แผง hero: พื้น #F6F6F1 radius 32px padding 32px 40px แบ่ง 2 คอลัมน์ (มือถือเรียงลง)
+   - ซ้าย: ภาพลายเส้น (SVG ด้านล่าง ให้บันทึกเป็น src/assets/illustrations/student-phone.svg)
+   - ขวา: หัวข้อ "งานพาร์ทไทม์<br>ใกล้ตัวคุณ" ฟอนต์ Prompt 700 44px สี #1F3A13 (มือถือ 30px)
+     คำอธิบาย "ค้นหาจากชื่องาน ชื่อร้าน หรือเลือกดูงานในพื้นที่ที่สะดวก" 17px สี #4A5541
+     ช่องค้นหาแคปซูล (เชื่อมกับช่องค้นหาเดิม)
+     แถวปุ่ม 2 ปุ่ม: "ค้นหางาน" (primary) และ "ทุกพื้นที่" (secondary มีไอคอนหมุด — เปิด area picker modal เดิม และแสดงชื่อพื้นที่ที่เลือกแทนคำว่า "ทุกพื้นที่")
+   - บนมือถือให้ภาพเล็กลงหรือซ่อนได้ เพื่อให้รายการงานขึ้นมาเร็ว
+2) แถวชิปหมวดหมู่ (ใช้ข้อมูลหมวดเดิม) ระยะห่าง 8px ตัดบรรทัดได้บนจอกว้าง และเลื่อนแนวนอนได้บนมือถือ
+3) รายการงาน: grid repeat(auto-fill, minmax(380px, 1fr)) ระยะห่าง 4px 24px (มือถือคอลัมน์เดียว)
+   แต่ละแถว: padding 18px 16px, radius 18px, เส้นล่าง 1.5px #ECEEE6
+   - ซ้าย: ชื่องาน (Prompt 600 17px #1F2A16) / "ชื่อร้าน · เวลาที่ลง" 14px #5D6754 / "อำเภอ, จังหวัด · วัน เวลา" 14px #4A5541
+   - ขวา: ป้ายค่าจ้างทรงแคปซูล พื้น #EEF0E8 ตัวอักษร Prompt 600 16px #1F3A13 เช่น "฿55/ชม."
+   - hover/โฟกัส: พื้น #F2F9E8
+   ใช้ ion-infinite-scroll, ion-refresher, pagination และ page-state (ว่าง/โหลด/error) แบบเดิม
+4) ไม่มีแผนที่ในรอบนี้
+
+## 5. หน้าอื่นที่ต้องปรับให้เข้าชุด
+- login / register: ใช้แผง #F6F6F1 radius 32px ตรงกลาง กว้างสุด 440px โลโก้แบบใหม่ด้านบน input/ปุ่มตามข้อ 2 เส้นคั่น "หรือ" สี #E2E5DA ปุ่ม Google ทรงแคปซูลพื้น #EEF0E8
+  บนจอกว้างวางภาพลายเส้นไว้ข้างฟอร์มได้
+- onboarding, job-detail, applications, saved, notifications, chat, profile, หน้าร้าน (dashboard, jobs, job-form, applicants): เปลี่ยนตาม token และ component styles โดยไม่ต้องจัด layout ใหม่
+- job-card component ที่ใช้ร่วมกัน: ปรับเป็นแบบแถวตามข้อ 4.3
+
+## 6. ภาพลายเส้น (student-phone.svg)
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" fill="none" stroke="#1F2A16" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M70 92 C 62 80 64 68 74 66 C 84 68 86 80 78 92 L74 100 Z" fill="#FFFFFF"/>
+  <circle cx="74" cy="78" r="3.5"/>
+  <path d="M178 140 C 206 124 216 100 226 84" stroke-dasharray="5 7"/>
+  <rect x="222" y="40" width="56" height="40" rx="10" fill="#A6E36B"/>
+  <path d="M234 54 h32 M234 66 h20"/>
+  <path d="M206 54 l12 -7 M210 68 l13 -2" stroke-width="2"/>
+  <path d="M86 214 C 120 224 200 224 234 214" stroke-width="2"/>
+  <path d="M98 202 C 118 172 202 172 222 202 C 202 216 118 216 98 202 Z" fill="#1F2A16"/>
+  <path d="M120 152 C 122 114 140 102 160 102 C 180 102 198 114 200 152 C 190 160 130 160 120 152 Z" fill="#FFFFFF"/>
+  <path d="M150 112 Q160 120 170 112" stroke-width="2"/>
+  <path d="M154 96 L154 104 M166 96 L166 104"/>
+  <circle cx="160" cy="72" r="26" fill="#FFFFFF"/>
+  <path d="M134 68 C 128 44 148 32 162 38 C 176 30 196 42 188 64 C 182 54 170 52 160 56 C 150 52 140 56 134 68 Z" fill="#1F2A16"/>
+  <circle cx="151" cy="76" r="2.2" fill="#1F2A16"/>
+  <circle cx="170" cy="76" r="2.2" fill="#1F2A16"/>
+  <path d="M155 86 Q161 91 167 86"/>
+  <path d="M128 128 C 118 150 134 168 150 164"/>
+  <path d="M192 128 C 202 150 186 168 170 164"/>
+  <rect x="147" y="142" width="26" height="36" rx="5" fill="#1F2A16" transform="rotate(-6 160 160)"/>
+  <rect x="151" y="147" width="18" height="24" rx="2" fill="#A6E36B" stroke="none" transform="rotate(-6 160 160)"/>
+  <path d="M262 150 C 262 140 280 140 280 150 L 278 168 L 264 168 Z" fill="#FFFFFF"/>
+  <path d="M280 152 C 290 152 290 162 279 162" stroke-width="2"/>
+  <path d="M266 134 q-3 -5 0 -9 M274 134 q-3 -5 0 -9" stroke-width="2"/>
+</svg>
+แสดงภาพนี้ด้วย <img alt=""> เพราะเป็นภาพตกแต่ง
+
+## 7. เช็กก่อนส่งงาน
+- ตัวอักษรทุกจุดผ่าน contrast 4.5:1 และมี focus ring ที่มองเห็นได้ (เช่น outline 2px #1F3A13 offset 2px)
+- ทดสอบที่ความกว้าง 390px, 768px และ 1440px: ต้องไม่มี scroll แนวนอน และเมนูต้องสลับระหว่าง top nav กับ tab bar ถูกต้อง
+- npm run lint และ npm test ต้องผ่าน
+- แนบภาพหน้าจอหน้าค้นหางานกับหน้า login ทั้งบนจอมือถือและจอคอม

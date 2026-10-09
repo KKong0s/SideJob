@@ -1,54 +1,153 @@
-.area-row {
-  display: flex;
+.phone-header .toolbar-logo {
+  padding-inline-start: 16px;
+}
+
+@media (min-width: 992px) {
+  .phone-header {
+    display: none;
+  }
+}
+
+.page {
+  padding: 16px 0 24px;
+}
+
+/* ---- Hero: #F6F6F1 panel, art on the left, copy + search on the right ---- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
   align-items: center;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 24px 48px;
+  padding: 32px 40px;
+  border-radius: var(--sj-radius-hero);
+  background: var(--sj-surface);
+}
+
+.art {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-family: var(--sj-font-heading);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1.2;
+  color: var(--sj-dark);
+}
+
+.lead {
+  margin: 0 0 20px;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--sj-text-secondary);
+}
+
+.search-form ion-searchbar {
+  padding: 0;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+
+  ion-button {
+    margin: 0;
+  }
 }
 
 .area-button {
-  flex: 1;
-  min-width: 0;
-  --border-radius: 20px;
-  text-transform: none;
+  max-width: 100%;
 
   .area-text {
-    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-align: left;
   }
 }
 
-.filter-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  font-size: 0.65rem;
-  --padding-start: 4px;
-  --padding-end: 4px;
-}
-
-.chips-bar {
-  --min-height: 44px;
-}
-
+/* ---- Category chips: wrap on wide screens, scroll sideways on phones ---- */
 .chips {
   display: flex;
-  overflow-x: auto;
-  padding: 0 8px;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 8px;
 
   ion-chip {
     flex-shrink: 0;
   }
 }
 
-.ago {
-  font-size: 0.75rem;
-  white-space: nowrap;
+/* ---- Job rows ------------------------------------------------------------ */
+.job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 4px 24px;
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding: 12px 16px 24px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 24px 20px;
+  }
+
+  /* smaller art so the job list shows up sooner */
+  .art {
+    max-width: 150px;
+    justify-self: center;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .lead {
+    font-size: 16px;
+  }
+
+  .hero-actions ion-button {
+    flex: 1 1 auto;
+  }
+
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -16px;
+    padding-inline: 16px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .job-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 768–991px: no top nav yet; a narrower art column keeps the copy and search wide */
+@media (min-width: 768px) and (max-width: 991px) {
+  .page {
+    padding-inline: 24px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+    padding: 28px 32px;
+    gap: 24px 32px;
+  }
+
+  h1 {
+    font-size: 36px;
+  }
 }

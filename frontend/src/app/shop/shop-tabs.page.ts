@@ -1,15 +1,17 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { IonBadge, IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { chatbubblesOutline, briefcaseOutline, gridOutline, peopleOutline, storefrontOutline } from 'ionicons/icons';
 
+import { NavItem, TopNavComponent } from '../shared/components/top-nav/top-nav.component';
 import { ChatService } from '../shared/services/chat.service';
 
 /** Bottom tabs for shop owners */
 @Component({
   selector: 'app-shop-tabs',
   template: `
-    <ion-tabs>
+    <ion-tabs class="sj-tabs">
+      <app-top-nav slot="top" class="sj-top-nav" [items]="navItems()" homePath="/shop/dashboard" profilePath="/shop/profile"></app-top-nav>
       <ion-tab-bar slot="bottom">
         <ion-tab-button tab="dashboard">
           <ion-icon name="grid-outline" aria-hidden="true"></ion-icon>
@@ -27,7 +29,7 @@ import { ChatService } from '../shared/services/chat.service';
           <ion-icon name="chatbubbles-outline" aria-hidden="true"></ion-icon>
           <ion-label>แชท</ion-label>
           @if (chat.unread() > 0) {
-            <ion-badge color="danger">{{ chat.unread() > 99 ? '99+' : chat.unread() }}</ion-badge>
+            <ion-badge class="sj-count">{{ chat.unread() > 99 ? '99+' : chat.unread() }}</ion-badge>
           }
         </ion-tab-button>
         <ion-tab-button tab="profile">
@@ -37,10 +39,16 @@ import { ChatService } from '../shared/services/chat.service';
       </ion-tab-bar>
     </ion-tabs>
   `,
-  imports: [IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonBadge],
+  imports: [TopNavComponent, IonTabs, IonTabBar, IonTabButton, IonIcon, IonLabel, IonBadge],
 })
 export class ShopTabsPage {
   readonly chat = inject(ChatService);
+  readonly navItems = computed<NavItem[]>(() => [
+    { path: '/shop/dashboard', label: 'แดชบอร์ด' },
+    { path: '/shop/jobs', label: 'ประกาศของฉัน' },
+    { path: '/shop/applicants', label: 'ผู้สมัคร' },
+    { path: '/shop/chats', label: 'แชท', count: this.chat.unread() },
+  ]);
 
   constructor() {
     addIcons({ chatbubblesOutline, gridOutline, briefcaseOutline, peopleOutline, storefrontOutline });

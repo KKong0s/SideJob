@@ -1,4 +1,4 @@
-// Chart tokens shared by the admin chart components (validated palette, light + dark steps)
+// Chart tokens shared by the admin chart components (validated palette; the app is light-only)
 :host {
   --viz-surface: var(--ion-card-background, #fcfcfb);
   --viz-grid: #e6e5e0;
@@ -7,19 +7,11 @@
   --viz-series-1: #2a78d6;
   --viz-series-2: #eb6834;
   --viz-series-3: #1baf7a;
+  /* single-series bars use the brand dark green */
+  --viz-bar: var(--sj-dark, #1f3a13);
   display: block;
 }
 
-@media (prefers-color-scheme: dark) {
-  :host {
-    --viz-surface: var(--ion-card-background, #1a1a19);
-    --viz-grid: #383835;
-    --viz-text-secondary: #c3c2b7;
-    --viz-series-1: #3987e5;
-    --viz-series-2: #d95926;
-    --viz-series-3: #199e70;
-  }
-}
 
 .table-toggle {
   margin-top: 4px;

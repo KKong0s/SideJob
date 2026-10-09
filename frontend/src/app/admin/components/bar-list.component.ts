@@ -80,7 +80,7 @@ export interface BarItem {
       min-width: 2px;
       /* square at the baseline, rounded at the data end */
       border-radius: 0 4px 4px 0;
-      background: var(--viz-series-1);
+      background: var(--viz-bar);
     }
     .value {
       color: var(--viz-text-secondary);

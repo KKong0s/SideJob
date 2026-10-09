@@ -1,106 +1,107 @@
 import { Component, computed, input } from '@angular/core';
-import { IonIcon, IonItem, IonLabel } from '@ionic/angular';
-import { addIcons } from 'ionicons';
-import { calendarOutline, cashOutline, locationOutline, timeOutline } from 'ionicons/icons';
 
-import { environment } from '../../../../environments/environment';
-import { Job, daysText, locationText, timeText, wageText } from '../../models/job.model';
+import { Job, daysText, locationText, timeText, wageShortText, wageText } from '../../models/job.model';
+import { timeAgo } from '../../utils/format';
 
-/** One job row in a list. Optional shop line for seeker lists; put badges in the "end" slot. */
+/**
+ * One job as a clean row: title / "shop · posted" / "district, province · days time" on the left,
+ * the wage pill on the right. Extra lines go in the "meta" slot, badges / buttons in the "end" slot.
+ * The host is the click target (role="button"), so pages keep binding (click) on <app-job-card>.
+ */
 @Component({
   selector: 'app-job-card',
+  host: {
+    class: 'job-row',
+    role: 'button',
+    tabindex: '0',
+    '(keydown.enter)': 'activate($event)',
+    '(keydown.space)': 'activate($event)',
+  },
   template: `
-    <ion-item [button]="true" [detail]="false" lines="full" class="job-card">
-      @if (shopName()) {
-        <div slot="start" class="thumb">
-          @if (shopImage()) {
-            <img [src]="uploadsUrl + '/' + shopImage()" alt="" />
-          } @else {
-            <span>{{ shopName()!.slice(0, 1) }}</span>
-          }
-        </div>
+    <div class="main">
+      <h3 class="title">{{ job().title }}</h3>
+      @if (shopName() || postedAt()) {
+        <p class="shop">
+          {{ shopName() }}
+          @if (shopName() && postedAt()) { · }
+          @if (postedAt()) { {{ ago() }} }
+        </p>
       }
-      <ion-label>
-        <h2 class="title">{{ job().title }}</h2>
-        @if (shopName()) {
-          <p class="shop">{{ shopName() }}</p>
-        }
-        <p class="wage"><ion-icon name="cash-outline" aria-hidden="true"></ion-icon>{{ wage() }}</p>
-        <p><ion-icon name="location-outline" aria-hidden="true"></ion-icon>{{ location() }}</p>
-        <p><ion-icon name="calendar-outline" aria-hidden="true"></ion-icon>{{ days() }} · {{ time() }}</p>
-        <ng-content select="[meta]"></ng-content>
-      </ion-label>
-      <div slot="end" class="end"><ng-content select="[end]"></ng-content></div>
-    </ion-item>
+      <p class="where">{{ location() }} · {{ days() }} {{ time() }}</p>
+      <ng-content select="[meta]"></ng-content>
+    </div>
+    <div class="end">
+      <span class="sj-wage" [attr.aria-label]="'ค่าจ้าง ' + wageFull()">{{ wage() }}</span>
+      <ng-content select="[end]"></ng-content>
+    </div>
   `,
   styles: `
-    .job-card {
-      --padding-top: 8px;
-      --padding-bottom: 8px;
+    :host {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 18px 16px;
+      border-radius: var(--sj-radius-card);
+      border-bottom: 1.5px solid var(--sj-divider);
+      cursor: pointer;
+      transition: background-color 0.15s;
+      min-width: 0;
+    }
+    :host(:hover),
+    :host(:focus-visible) {
+      background: var(--sj-selected);
+    }
+    .main {
+      flex: 1;
+      min-width: 0;
     }
     .title {
+      margin: 0 0 4px;
+      font-family: var(--sj-font-heading);
       font-weight: 600;
-      white-space: normal;
-    }
-    .shop {
-      color: var(--ion-color-step-700, var(--ion-color-medium));
-    }
-    .wage {
-      color: var(--ion-color-success-shade) !important;
-      font-weight: 600;
+      font-size: 17px;
+      line-height: 1.4;
+      color: var(--sj-text);
     }
     p {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      white-space: normal;
+      margin: 2px 0 0;
+      font-size: 14px;
+      line-height: 1.5;
     }
-    p ion-icon {
-      flex-shrink: 0;
+    .shop {
+      color: var(--sj-text-muted);
     }
-    .thumb {
-      width: 48px;
-      height: 48px;
-      border-radius: 10px;
-      overflow: hidden;
-      background: var(--ion-color-primary-tint);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 1.2rem;
-      align-self: flex-start;
-      margin-top: 8px;
-    }
-    .thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    .where {
+      color: var(--sj-text-secondary);
     }
     .end {
+      flex: none;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 4px;
-      align-self: flex-start;
-      margin-top: 10px;
+      gap: 6px;
     }
   `,
-  imports: [IonItem, IonLabel, IonIcon],
 })
 export class JobCardComponent {
   readonly job = input.required<Job>();
   readonly shopName = input<string | null>(null);
+  /** Kept for existing callers; the row layout no longer shows the shop image */
   readonly shopImage = input<string | null>(null);
+  /** ISO time the job was posted; shown as "x ago" after the shop name */
+  readonly postedAt = input<string | null>(null);
 
-  readonly uploadsUrl = environment.uploadsUrl;
-  readonly wage = computed(() => wageText(this.job()));
+  readonly wage = computed(() => wageShortText(this.job()));
+  readonly wageFull = computed(() => wageText(this.job()));
   readonly location = computed(() => locationText(this.job()));
   readonly days = computed(() => daysText(this.job()));
   readonly time = computed(() => timeText(this.job()));
+  readonly ago = computed(() => timeAgo(this.postedAt() ?? ''));
 
-  constructor() {
-    addIcons({ cashOutline, locationOutline, calendarOutline, timeOutline });
+  /** Keyboard users open the job with Enter / Space like a button */
+  activate(event: Event): void {
+    if (event.target !== event.currentTarget) return;
+    event.preventDefault();
+    (event.currentTarget as HTMLElement).click();
   }
 }

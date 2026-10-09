@@ -154,7 +154,8 @@ import { Loader } from '../../../shared/utils/loader';
       margin-bottom: 8px;
     }
     .wage {
-      color: var(--ion-color-success-shade);
+      color: var(--sj-dark);
+      font-family: var(--sj-font-heading);
       font-weight: 600;
     }
     .pre {

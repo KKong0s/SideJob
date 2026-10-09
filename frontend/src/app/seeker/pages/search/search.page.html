@@ -1,38 +1,8 @@
-<ion-header>
+<!-- Phones only: wide screens use the top nav from the tab shell -->
+<ion-header class="phone-header">
   <ion-toolbar>
-    <ion-title>ค้นหางาน</ion-title>
-        <ion-buttons slot="end"><app-bell-button></app-bell-button></ion-buttons>
-  </ion-toolbar>
-  <ion-toolbar class="area-bar">
-    <div class="area-row">
-      <ion-button fill="outline" size="small" class="area-button" (click)="chooseArea()">
-        <ion-icon slot="start" name="location-outline"></ion-icon>
-        <span class="area-text">{{ areaLabel() }}</span>
-        <ion-icon slot="end" name="chevron-down"></ion-icon>
-      </ion-button>
-      <ion-button fill="clear" size="small" (click)="openFilter()" aria-label="ตัวกรอง">
-        <ion-icon slot="icon-only" name="options-outline"></ion-icon>
-        @if (filterCount()) {
-          <ion-badge color="danger" class="filter-badge">{{ filterCount() }}</ion-badge>
-        }
-      </ion-button>
-    </div>
-  </ion-toolbar>
-  <ion-toolbar>
-    <ion-searchbar placeholder="ค้นหาชื่องานหรือชื่อร้าน" [debounce]="500" (ionInput)="setQuery($event.detail.value ?? '')"></ion-searchbar>
-  </ion-toolbar>
-  <ion-toolbar class="chips-bar">
-    <div class="chips">
-      <ion-chip [outline]="filter().categoryId !== null" [color]="filter().categoryId === null ? 'primary' : 'medium'" (click)="setCategory(null)">
-        <ion-label>ทั้งหมด</ion-label>
-      </ion-chip>
-      @for (c of categories(); track c.id) {
-        <ion-chip [outline]="filter().categoryId !== c.id" [color]="filter().categoryId === c.id ? 'primary' : 'medium'" (click)="setCategory(c.id)">
-          @if (c.icon) { <ion-icon [name]="c.icon" aria-hidden="true"></ion-icon> }
-          <ion-label>{{ c.name }}</ion-label>
-        </ion-chip>
-      }
-    </div>
+    <app-brand-logo slot="start" class="toolbar-logo"></app-brand-logo>
+    <ion-buttons slot="end"><app-bell-button></app-bell-button></ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -41,26 +11,65 @@
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  <app-page-state
-    [state]="list.state()"
-    [thumbnail]="true"
-    emptyIcon="search-outline"
-    [emptyText]="area.selection() ? 'ยังไม่มีงานในพื้นที่นี้' : 'ไม่พบงานที่ตรงกับตัวกรอง'"
-    emptyHint="ลองขยายพื้นที่หรือเปลี่ยนตัวกรอง"
-    [actionText]="emptyAction()"
-    (action)="widen()"
-    (retry)="list.reload()"
-  >
-    <ion-list>
-      @for (job of list.items(); track job.id) {
-        <app-job-card [job]="job" [shopName]="job.shop.name" [shopImage]="job.shop.imagePath" (click)="open(job)">
-          <ng-container end>
-            <ion-note class="ago">{{ timeAgo(job.createdAt) }}</ion-note>
-          </ng-container>
-        </app-job-card>
+  <div class="page">
+    <section class="hero" aria-labelledby="hero-title">
+      <img class="art" src="assets/illustrations/student-phone.svg" alt="" width="320" height="260" />
+      <div class="copy">
+        <h1 id="hero-title">งานพาร์ทไทม์<br />ใกล้ตัวคุณ</h1>
+        <p class="lead">ค้นหาจากชื่องาน ชื่อร้าน หรือเลือกดูงานในพื้นที่ที่สะดวก</p>
+        <form role="search" class="search-form" (submit)="searchNow($event)">
+          <ion-searchbar
+            #searchbar
+            placeholder="ค้นหาชื่องานหรือชื่อร้าน"
+            aria-label="ค้นหาชื่องานหรือชื่อร้าน"
+            [debounce]="500"
+            [value]="query()"
+            (ionInput)="setQuery($event.detail.value ?? '')"
+          ></ion-searchbar>
+        </form>
+        <div class="hero-actions">
+          <ion-button (click)="searchNow()">ค้นหางาน</ion-button>
+          <ion-button color="secondary" class="area-button" (click)="chooseArea()">
+            <ion-icon slot="start" name="location-outline" aria-hidden="true"></ion-icon>
+            <span class="area-text">{{ areaLabel() }}</span>
+          </ion-button>
+        </div>
+      </div>
+    </section>
+
+    <div class="chips" role="group" aria-label="หมวดหมู่งานและตัวกรอง">
+      <ion-chip [class.sj-chip-selected]="filterCount() > 0" (click)="openFilter()" [attr.aria-label]="filterCount() ? 'ตัวกรอง ใช้อยู่ ' + filterCount() + ' รายการ' : 'ตัวกรอง'">
+        <ion-icon name="options-outline" aria-hidden="true"></ion-icon>
+        <ion-label>ตัวกรอง@if (filterCount()) { ({{ filterCount() }}) }</ion-label>
+      </ion-chip>
+      <ion-chip [class.sj-chip-selected]="filter().categoryId === null" [attr.aria-pressed]="filter().categoryId === null" (click)="setCategory(null)">
+        <ion-label>ทั้งหมด</ion-label>
+      </ion-chip>
+      @for (c of categories(); track c.id) {
+        <ion-chip [class.sj-chip-selected]="filter().categoryId === c.id" [attr.aria-pressed]="filter().categoryId === c.id" (click)="setCategory(c.id)">
+          @if (c.icon) { <ion-icon [name]="c.icon" aria-hidden="true"></ion-icon> }
+          <ion-label>{{ c.name }}</ion-label>
+        </ion-chip>
       }
-    </ion-list>
-  </app-page-state>
+    </div>
+
+    <app-page-state
+      [state]="list.state()"
+      [thumbnail]="true"
+      emptyIcon="search-outline"
+      [emptyText]="area.selection() ? 'ยังไม่มีงานในพื้นที่นี้' : 'ไม่พบงานที่ตรงกับตัวกรอง'"
+      emptyHint="ลองขยายพื้นที่หรือเปลี่ยนตัวกรอง"
+      [actionText]="emptyAction()"
+      (action)="widen()"
+      (retry)="list.reload()"
+    >
+      <div class="job-grid">
+        @for (job of list.items(); track job.id) {
+          <app-job-card [job]="job" [shopName]="job.shop.name" [postedAt]="job.createdAt" (click)="open(job)"></app-job-card>
+        }
+      </div>
+    </app-page-state>
+  </div>
 
   <ion-infinite-scroll [disabled]="!list.hasNext()" (ionInfinite)="list.loadMore($event)">
     <ion-infinite-scroll-content loadingText="กำลังโหลดเพิ่ม..."></ion-infinite-scroll-content>

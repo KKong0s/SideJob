@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { IonButton, IonContent, IonInput, IonInputPasswordToggle, IonNote, IonSpinner } from '@ionic/angular';
 
+import { BrandLogoComponent } from '../../components/brand-logo/brand-logo.component';
 import { GoogleAuthComponent } from '../../components/google-auth/google-auth.component';
 import { SessionUser } from '../../models/session.model';
 import { AuthService } from '../../services/auth.service';
@@ -15,7 +16,7 @@ type Step = 'email' | 'password';
 @Component({
   selector: 'app-login',
   templateUrl: 'login.page.html',
-  imports: [ReactiveFormsModule, RouterLink, IonContent, IonInput, IonInputPasswordToggle, IonButton, IonNote, IonSpinner, GoogleAuthComponent],
+  imports: [ReactiveFormsModule, RouterLink, IonContent, IonInput, IonInputPasswordToggle, IonButton, IonNote, IonSpinner, GoogleAuthComponent, BrandLogoComponent],
 })
 export class LoginPage {
   private readonly auth = inject(AuthService);

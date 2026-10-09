@@ -1,8 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import {
-  IonBadge,
   IonButton,
+  IonButtons,
   IonChip,
   IonContent,
   IonHeader,
@@ -10,20 +10,17 @@ import {
   IonInfiniteScroll,
   IonInfiniteScrollContent,
   IonLabel,
-  IonList,
-  IonNote,
   IonRefresher,
   IonRefresherContent,
   IonSearchbar,
-  IonTitle,
   IonToolbar,
   ModalController,
   RefresherCustomEvent,
-  IonButtons,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { chevronDown, locationOutline, optionsOutline, searchOutline } from 'ionicons/icons';
 
+import { BrandLogoComponent } from '../../../shared/components/brand-logo/brand-logo.component';
 import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
 import { openAreaPicker } from '../../../shared/components/area-picker/area-picker.component';
 import { JobCardComponent } from '../../../shared/components/job-card/job-card.component';
@@ -32,7 +29,6 @@ import { EMPTY_FILTER, JobFilter, PublicJob } from '../../../shared/models/searc
 import { AreaService } from '../../../shared/services/area.service';
 import { GeoService } from '../../../shared/services/geo.service';
 import { JobsService } from '../../../shared/services/jobs.service';
-import { timeAgo } from '../../../shared/utils/format';
 import { registerCategoryIcons } from '../../../shared/utils/icons';
 import { PagedList } from '../../../shared/utils/paged-list';
 import { JobFilterComponent } from './job-filter.component';
@@ -44,21 +40,18 @@ import { JobFilterComponent } from './job-filter.component';
   styleUrls: ['search.page.scss'],
   imports: [
     BellButtonComponent,
+    BrandLogoComponent,
     IonButtons,
     IonHeader,
     IonToolbar,
-    IonTitle,
     IonButton,
     IonIcon,
-    IonBadge,
     IonSearchbar,
     IonContent,
     IonRefresher,
     IonRefresherContent,
     IonChip,
     IonLabel,
-    IonList,
-    IonNote,
     IonInfiniteScroll,
     IonInfiniteScrollContent,
     JobCardComponent,
@@ -79,6 +72,8 @@ export class SearchPage {
     this.jobsApi.search(this.area.selection(), this.filter(), this.query(), page, ctx),
   );
 
+  private readonly searchbar = viewChild<IonSearchbar>('searchbar');
+
   readonly areaLabel = computed(() => this.area.label(this.area.selection()));
   /** Number of active filters in the filter sheet (category has its own chips) */
   readonly filterCount = computed(() => {
@@ -93,7 +88,6 @@ export class SearchPage {
     return '';
   });
 
-  readonly timeAgo = timeAgo;
   private started = false;
 
   constructor() {
@@ -143,6 +137,13 @@ export class SearchPage {
   setQuery(value: string): void {
     this.query.set(value.trim());
     void this.list.reload();
+  }
+
+  /** "ค้นหางาน" button / Enter: search right away instead of waiting for the debounce */
+  async searchNow(event?: Event): Promise<void> {
+    event?.preventDefault();
+    const input = await this.searchbar()?.getInputElement();
+    this.setQuery(input?.value ?? this.query());
   }
 
   /** Empty-state button: widen the area step by step, then clear filters */

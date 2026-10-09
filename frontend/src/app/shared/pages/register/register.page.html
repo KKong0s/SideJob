@@ -1,13 +1,13 @@
 <ion-content class="auth-bg">
   <div class="auth-shell">
-    <div class="auth-card">
-      <div class="auth-intro">
-        <div class="auth-logo" aria-hidden="true">S</div>
-        <h1>สร้างบัญชี SideJob</h1>
-        <p>สมัครครั้งเดียว แล้วเลือกได้ว่าจะหางาน หรือเปิดร้านเพื่อประกาศหาคนช่วยงาน</p>
-      </div>
+    <img class="auth-art" src="assets/illustrations/student-phone.svg" alt="" width="320" height="260" />
 
-    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-main">
+    <div class="auth-panel">
+      <app-brand-logo class="auth-logo"></app-brand-logo>
+      <h1>สร้างบัญชี</h1>
+      <p class="auth-lead">สมัครครั้งเดียว แล้วเลือกได้ว่าจะหางาน หรือเปิดร้านเพื่อประกาศหาคนช่วยงาน</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
       <ion-input
         type="email"
         label="อีเมล"
@@ -50,15 +50,14 @@
         <ion-note color="danger">{{ error() }}</ion-note>
       }
 
-      <div class="auth-actions">
-        <a class="auth-link" routerLink="/login">มีบัญชีอยู่แล้ว? เข้าสู่ระบบ</a>
-        <ion-button type="submit" shape="round" [disabled]="busy()">
-          @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { สมัครสมาชิก }
-        </ion-button>
-      </div>
+      <ion-button type="submit" expand="block" [disabled]="busy()">
+        @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { สมัครสมาชิก }
+      </ion-button>
     </form>
-    </div>
 
-    <app-google-auth (signedIn)="goNext($event)"></app-google-auth>
+      <app-google-auth (signedIn)="goNext($event)"></app-google-auth>
+
+      <p class="auth-switch">มีบัญชีอยู่แล้ว? <a routerLink="/login">เข้าสู่ระบบ</a></p>
+    </div>
   </div>
 </ion-content>

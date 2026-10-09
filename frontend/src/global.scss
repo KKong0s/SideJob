@@ -34,117 +34,351 @@
 
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+/* Light mode only (the SideJob palette is defined for light surfaces) */
 
-/* Thai font (bundled, works offline in the mobile app) */
-@import "@fontsource/noto-sans-thai/400.css";
-@import "@fontsource/noto-sans-thai/500.css";
-@import "@fontsource/noto-sans-thai/700.css";
+/* Thai fonts (bundled, work offline in the mobile app): Anuphan for body, Prompt for headings */
+@import "@fontsource/anuphan/400.css";
+@import "@fontsource/anuphan/500.css";
+@import "@fontsource/anuphan/600.css";
+@import "@fontsource/prompt/500.css";
+@import "@fontsource/prompt/600.css";
+@import "@fontsource/prompt/700.css";
 
-/* Login / register: a centered card, intro on the left and the form on the right (stacked on phones) */
-.auth-bg {
-  --background: #f0f4f9;
-  --auth-card: #ffffff;
-  --auth-text-secondary: #444746;
+/* ==========================================================================
+   SideJob design tokens (reuse these instead of hard-coded colors)
+   ========================================================================== */
+:root {
+  --sj-surface: #f6f6f1; /* hero / emphasis panel */
+  --sj-chip: #eef0e8; /* chips, secondary buttons, wage pill */
+  --sj-border: #e2e5da; /* input outlines */
+  --sj-divider: #eceee6; /* list separators */
+  --sj-selected: #f2f9e8; /* hovered / selected row */
+  --sj-text: #1f2a16;
+  --sj-text-secondary: #4a5541;
+  --sj-text-muted: #5d6754;
+  --sj-dark: #1f3a13;
+  --sj-lime: #a6e36b;
+  --sj-radius-card: 18px;
+  --sj-radius-hero: 32px;
+  --sj-focus: 0 0 0 2px #ffffff, 0 0 0 4px #1f3a13;
 }
-@media (prefers-color-scheme: dark) {
-  .auth-bg {
-    --background: #0e0f11;
-    --auth-card: #1e1f22;
-    --auth-text-secondary: #c4c7c5;
+
+body {
+  color: var(--sj-text);
+}
+
+h1,
+h2,
+h3,
+ion-title,
+.sj-heading {
+  font-family: var(--sj-font-heading);
+}
+
+ion-title {
+  font-weight: 600;
+}
+
+/* Visible focus ring for keyboard users everywhere */
+:focus-visible {
+  outline: 2px solid var(--sj-dark);
+  outline-offset: 2px;
+}
+ion-button.ion-focused,
+ion-chip.ion-focused,
+ion-tab-button.ion-focused,
+ion-segment-button.ion-focused {
+  outline: 2px solid var(--sj-dark);
+  outline-offset: 2px;
+}
+
+/* Flat header: a hairline instead of the Material shadow (:root beats Ionic's scoped rule) */
+:root .header-md {
+  box-shadow: none;
+}
+ion-header ion-toolbar:last-of-type {
+  --border-width: 0 0 1px;
+  --border-color: var(--sj-divider);
+}
+
+/* ---- Buttons: capsule, Prompt 600 16px, 52px tall ---------------------- */
+ion-button {
+  --border-radius: 999px;
+  --box-shadow: none;
+  font-family: var(--sj-font-heading);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+ion-button:not([size='small']):not(ion-buttons ion-button) {
+  height: 52px;
+  font-size: 16px;
+  --padding-start: 24px;
+  --padding-end: 24px;
+}
+ion-button[size='small'] {
+  height: 44px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+ion-button[fill='outline'] {
+  --border-width: 1.5px;
+  --border-color: var(--sj-border);
+  --color: var(--sj-dark);
+}
+/* secondary = lime surface with dark-green text (never lime text) */
+ion-button.ion-color-secondary {
+  --color: var(--sj-dark);
+}
+
+/* ---- Inputs: white, 1.5px #E2E5DA outline, capsule, 52px --------------- */
+:root ion-input[fill='outline'],
+:root ion-select[fill='outline'] {
+  --border-radius: 26px;
+  --border-width: 1.5px;
+  --border-color: var(--sj-border);
+  --highlight-color-focused: var(--sj-dark);
+  --padding-start: 20px;
+  --padding-end: 20px;
+  --background: #ffffff;
+  min-height: 52px;
+}
+/* multi-line fields keep a softer radius so the text has room */
+:root ion-textarea[fill='outline'] {
+  --border-radius: 18px;
+  --border-width: 1.5px;
+  --border-color: var(--sj-border);
+  --highlight-color-focused: var(--sj-dark);
+  --padding-start: 20px;
+  --padding-end: 20px;
+  --background: #ffffff;
+}
+ion-input ion-icon,
+ion-select ion-icon {
+  color: var(--sj-text-secondary);
+}
+
+/* :root raises specificity above Ionic's scoped .sc-ion-searchbar-md-h rules */
+:root ion-searchbar {
+  --background: #ffffff;
+  --border-radius: 999px;
+  --box-shadow: none;
+  --icon-color: var(--sj-text-secondary);
+  --placeholder-color: var(--sj-text-muted);
+  --placeholder-opacity: 1;
+  --color: var(--sj-text);
+
+  .searchbar-input-container {
+    border: 1.5px solid var(--sj-border);
+    border-radius: 999px;
+  }
+  .searchbar-input {
+    min-height: 49px; /* + 1.5px borders = 52px */
+  }
+  &.searchbar-has-focus .searchbar-input-container {
+    border-color: var(--sj-dark);
   }
 }
 
+/* ---- Chips: #EEF0E8 by default, dark green + white when selected --------- */
+ion-chip {
+  --background: var(--sj-chip);
+  --color: var(--sj-text);
+  background: var(--sj-chip);
+  color: var(--sj-text);
+  border: 0;
+  border-radius: 999px;
+  min-height: 42px;
+  padding-inline: 16px;
+  margin: 0;
+  font-weight: 500;
+  opacity: 1;
+}
+ion-chip.chip-outline {
+  background: var(--sj-chip);
+  border-color: transparent;
+}
+ion-chip.ion-color-primary:not(.chip-outline),
+ion-chip.sj-chip-selected {
+  background: var(--sj-dark);
+  color: #ffffff;
+  font-weight: 600;
+}
+ion-chip ion-icon {
+  color: inherit;
+}
+
+/* ---- Cards / list rows: radius 18px, hairline instead of shadow ---------- */
+ion-card {
+  border-radius: var(--sj-radius-card);
+  box-shadow: none;
+  border: 1.5px solid var(--sj-divider);
+}
+ion-item {
+  --border-color: var(--sj-divider);
+}
+
+/* ---- Bottom tab bar (phones) --------------------------------------------- */
+ion-tab-bar {
+  --border: 1px solid var(--sj-divider);
+}
+ion-tab-button {
+  --color: var(--sj-text-muted);
+  --color-selected: var(--sj-dark);
+  font-family: var(--sj-font-heading);
+}
+ion-tab-button.tab-selected ion-label {
+  font-weight: 600;
+}
+
+/* Counters (bell, chat tab): lime with dark-green numbers */
+.sj-count {
+  --background: var(--sj-lime);
+  --color: var(--sj-dark);
+  font-weight: 700;
+}
+
+/* ---- Brand + avatars ----------------------------------------------------- */
+.sj-avatar {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--sj-dark);
+  color: #ffffff;
+  font-family: var(--sj-font-heading);
+  font-weight: 600;
+  font-size: 18px;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+/* Page content container: max 1280px, 24px gutters (16px on phones) */
+.sj-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+@media (max-width: 767px) {
+  .sj-container {
+    padding-inline: 16px;
+  }
+}
+
+/* Wage pill */
+.sj-wage {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--sj-chip);
+  color: var(--sj-dark);
+  font-family: var(--sj-font-heading);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* ---- Tab shells: top nav on wide screens, bottom tab bar on phones ------- */
+ion-tabs .sj-top-nav {
+  display: none;
+}
+@media (min-width: 992px) {
+  ion-tabs .sj-top-nav {
+    display: block;
+  }
+  .sj-tabs ion-tab-bar {
+    display: none;
+  }
+  /* the top nav already has the bell */
+  .sj-tabs app-bell-button:not(.in-nav) {
+    display: none;
+  }
+  /* page content sits in a centered 1280px column */
+  .sj-tabs ion-content::part(scroll) {
+    padding-inline: max(24px, calc((100% - 1280px) / 2));
+  }
+  .sj-tabs ion-header ion-toolbar {
+    padding-inline: max(8px, calc((100% - 1280px) / 2));
+  }
+}
+
+/* ---- Login / register: #F6F6F1 panel (max 440px), art beside it on wide screens ---- */
 .auth-shell {
   min-height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 24px 16px;
+  gap: 64px;
+  padding: 32px 16px;
 }
 
-.auth-card {
+.auth-art {
+  display: none;
+  width: 320px;
+  height: auto;
+  flex: none;
+}
+@media (min-width: 992px) {
+  .auth-art {
+    display: block;
+  }
+}
+
+.auth-panel {
   width: 100%;
-  max-width: 1040px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px 48px;
-  padding: 40px;
-  border-radius: 28px;
-  background: var(--auth-card);
-  /* inputs (floating label notch, autofill cover) paint with the card color */
-  --ion-background-color: var(--auth-card);
-}
-
-.auth-intro {
-  min-width: 0;
+  max-width: 440px;
+  padding: 40px 36px;
+  border-radius: var(--sj-radius-hero);
+  background: var(--sj-surface);
+  /* input autofill cover + floating-label notch paint with the panel color */
+  --ion-background-color: var(--sj-surface);
 
   h1 {
-    margin: 24px 0 16px;
-    font-size: 2.25rem;
-    font-weight: 500;
-    line-height: 1.25;
-  }
-
-  p {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--auth-text-secondary);
+    margin: 28px 0 8px;
+    font-family: var(--sj-font-heading);
+    font-weight: 600;
+    font-size: 28px;
+    line-height: 1.3;
+    color: var(--sj-dark);
   }
 }
 
-.auth-logo {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: #fff;
-  background: var(--ion-color-primary);
+.auth-lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--sj-text-secondary);
 }
 
-.auth-main {
-  min-width: 0;
+.auth-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  /* lines the first field up with the heading */
-  padding-top: 72px;
-}
-
-.auth-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   margin-top: 24px;
 
   ion-button {
-    --padding-start: 24px;
-    --padding-end: 24px;
-    min-width: 96px;
-    margin: 0 0 0 auto;
+    margin: 0;
   }
 }
 
-.auth-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--ion-color-primary);
-  text-decoration: none;
-  cursor: pointer;
+.auth-switch {
+  margin: 24px 0 0;
+  text-align: center;
+  font-size: 15px;
+  color: var(--sj-text-secondary);
 
-  &:hover {
-    text-decoration: underline;
+  a {
+    color: var(--sj-dark);
+    font-weight: 600;
   }
 }
 
@@ -153,31 +387,32 @@
   align-items: center;
   gap: 8px;
   max-width: 100%;
-  padding: 4px 12px 4px 4px;
-  border: 1px solid var(--ion-color-step-300, #c4c7c5);
+  min-height: 44px;
+  padding: 4px 14px 4px 6px;
+  border: 1.5px solid var(--sj-border);
   border-radius: 999px;
-  background: none;
+  background: #ffffff;
   font: inherit;
   font-size: 0.9rem;
-  color: var(--ion-text-color);
+  color: var(--sj-text);
   cursor: pointer;
 
   &:hover {
-    background: rgba(var(--ion-color-primary-rgb), 0.08);
+    background: var(--sj-selected);
   }
 }
 
 .chip-avatar {
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
-  background: var(--ion-color-primary);
+  color: #ffffff;
+  background: var(--sj-dark);
 }
 
 .chip-email {
@@ -196,36 +431,14 @@
   border: 0;
 }
 
-@media (max-width: 768px) {
-  .auth-card {
-    grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 28px 24px;
-  }
-
-  .auth-intro h1 {
-    margin: 16px 0 8px;
-    font-size: 1.75rem;
-  }
-
-  .auth-main {
-    padding-top: 0;
-  }
-}
-
-/* Phones: drop the card and use the whole screen */
+/* Phones: the panel fills the screen width with smaller padding */
 @media (max-width: 480px) {
-  .auth-bg {
-    --background: var(--auth-card);
-  }
-
   .auth-shell {
-    justify-content: flex-start;
+    align-items: flex-start;
     padding: 16px;
   }
-
-  .auth-card {
-    padding: 8px 0;
+  .auth-panel {
+    padding: 28px 20px;
   }
 }
 
