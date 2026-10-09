@@ -795,6 +795,27 @@ same database transaction: if the log cannot be written the action is rolled bac
 
 - **Response 200:** `{ "seekers": 120, "shops": 30, "pendingShops": 4, "openJobs": 85, "applications": 410, "openReports": 2 }`
 
+### `GET /api/admin/stats/charts`
+
+Data for the dashboard charts. "Open job" = `status = 'open'` and `expires_on` today or later (same rule as `openJobs` above).
+
+- **Query:** `days` = `7` | `30` (default) | `90` — any other value falls back to 30
+- **Response 200:**
+
+  ```json
+  {
+    "days": 30,
+    "daily": [ { "date": "2026-09-10", "users": 2, "jobs": 0, "applications": 0 } ],
+    "openJobsByRegion": [ { "id": 1, "name": "ภาคกลาง", "value": 55 } ],
+    "openJobsTopProvinces": [ { "id": 1, "name": "กรุงเทพมหานคร", "value": 9 } ],
+    "openJobsByCategory": [ { "id": 3, "name": "คลังสินค้า / แพ็กของ", "value": 31 } ],
+    "shopStatus": { "verified": 96, "pending": 10, "rejected": 5, "unsubmitted": 5 }
+  }
+  ```
+
+  - `daily`: one row per day (Asia/Bangkok) for the last `days` days including today, oldest first; days with no activity are 0. `users` = new seeker + shop accounts (admins excluded), `jobs` = jobs posted, `applications` = applications submitted.
+  - Bar lists are sorted by `value` descending. `openJobsByRegion` lists every region and `openJobsByCategory` every active category (0 when none); `openJobsTopProvinces` is the top 10 provinces with open jobs.
+
 ### `GET /api/admin/shops`
 
 - **Query:** `status` = `pending` (default) | `verified` | `rejected` | `unsubmitted` | `all`; `q` (shop name or owner email, contains); `page`, `pageSize`

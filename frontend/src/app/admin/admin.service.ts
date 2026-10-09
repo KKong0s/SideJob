@@ -16,6 +16,7 @@ import {
   AdminShopRow,
   AdminStats,
   AdminUserRow,
+  DashboardCharts,
 } from './admin.model';
 
 /** /api/admin/* */
@@ -26,6 +27,10 @@ export class AdminService {
 
   stats(context?: HttpContext): Promise<AdminStats> {
     return firstValueFrom(this.http.get<AdminStats>(`${this.api}/stats`, { context }));
+  }
+
+  charts(days: number, context?: HttpContext): Promise<DashboardCharts> {
+    return firstValueFrom(this.http.get<DashboardCharts>(`${this.api}/stats/charts`, { params: { days: String(days) }, context }));
   }
 
   shops(params: QueryParams, context?: HttpContext): Promise<Page<AdminShopRow>> {

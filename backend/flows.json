@@ -10435,5 +10435,122 @@
         "statusCode": "",
         "headers": {},
         "wires": []
+    },
+    {
+        "id": "admin_cmt_dashboard_charts_read_only_aggregates",
+        "type": "comment",
+        "z": "tab_admin",
+        "name": "Dashboard charts (read-only aggregates)",
+        "info": "",
+        "x": 170,
+        "y": 1880,
+        "wires": []
+    },
+    {
+        "id": "admin_charts_in",
+        "z": "tab_admin",
+        "x": 150,
+        "y": 1930,
+        "name": "GET /api/admin/stats/charts",
+        "type": "http in",
+        "url": "/api/admin/stats/charts",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "wires": [
+            [
+                "admin_charts_auth"
+            ]
+        ]
+    },
+    {
+        "id": "admin_charts_auth",
+        "z": "tab_admin",
+        "x": 360,
+        "y": 1930,
+        "name": "auth-check (admin)",
+        "type": "subflow:sf_auth_check",
+        "env": [
+            {
+                "name": "ROLES",
+                "value": "admin",
+                "type": "str"
+            },
+            {
+                "name": "REQUIRE_PROFILE",
+                "value": "true",
+                "type": "bool"
+            }
+        ],
+        "wires": [
+            [
+                "admin_charts_build_chart_queries"
+            ]
+        ]
+    },
+    {
+        "id": "admin_charts_build_chart_queries",
+        "z": "tab_admin",
+        "x": 570,
+        "y": 1930,
+        "name": "Build chart queries",
+        "type": "function",
+        "func": "const days = [7, 30, 90].includes(Number(msg.req.query.days)) ? Number(msg.req.query.days) : 30;\nmsg.ctx = { days };\n// A job counts as \"open\" exactly like in search: open and not expired\nconst OPEN = \"j.status = 'open' AND j.expires_on >= CURDATE()\";\nmsg.topic = `WITH RECURSIVE d AS (\n                SELECT CURDATE() - INTERVAL ? DAY AS day\n                UNION ALL SELECT day + INTERVAL 1 DAY FROM d WHERE day < CURDATE()\n        )\n        SELECT DATE_FORMAT(d.day, '%Y-%m-%d') AS day,\n                     (SELECT COUNT(*) FROM users u WHERE u.role IN ('seeker', 'shop') AND u.created_at >= d.day AND u.created_at < d.day + INTERVAL 1 DAY) AS users,\n                     (SELECT COUNT(*) FROM jobs j WHERE j.created_at >= d.day AND j.created_at < d.day + INTERVAL 1 DAY) AS jobs,\n                     (SELECT COUNT(*) FROM applications a WHERE a.applied_at >= d.day AND a.applied_at < d.day + INTERVAL 1 DAY) AS applications\n        FROM d ORDER BY d.day;\n        SELECT r.id, r.name_th AS name, COUNT(j.id) AS n\n        FROM regions r JOIN provinces p ON p.region_id = r.id LEFT JOIN jobs j ON j.province_id = p.id AND ${OPEN}\n        GROUP BY r.id, r.name_th ORDER BY n DESC, r.id;\n        SELECT p.id, p.name_th AS name, COUNT(*) AS n\n        FROM jobs j JOIN provinces p ON p.id = j.province_id WHERE ${OPEN}\n        GROUP BY p.id, p.name_th ORDER BY n DESC, p.name_th LIMIT 10;\n        SELECT c.id, c.name, COUNT(j.id) AS n\n        FROM categories c LEFT JOIN jobs j ON j.category_id = c.id AND ${OPEN}\n        WHERE c.is_active = 1 GROUP BY c.id, c.name ORDER BY n DESC, c.sort_order;\n        SELECT verify_status AS status, COUNT(*) AS n FROM shops GROUP BY verify_status`;\nmsg.payload = [days - 1];\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_charts_load_chart_data"
+            ]
+        ]
+    },
+    {
+        "id": "admin_charts_load_chart_data",
+        "z": "tab_admin",
+        "x": 780,
+        "y": 1930,
+        "name": "Load chart data",
+        "type": "mysql",
+        "mydb": "cfg_mysql_sidejob",
+        "wires": [
+            [
+                "admin_charts_format_chart_data"
+            ]
+        ]
+    },
+    {
+        "id": "admin_charts_format_chart_data",
+        "z": "tab_admin",
+        "x": 990,
+        "y": 1930,
+        "name": "Format chart data",
+        "type": "function",
+        "func": "const [daily, regions, provinces, categories, statuses] = msg.payload;\nconst bars = (rows) => rows.map((r) => ({ id: r.id, name: r.name, value: Number(r.n) }));\nconst status = { verified: 0, pending: 0, rejected: 0, unsubmitted: 0 };\nfor (const r of statuses) status[r.status] = Number(r.n);\nmsg.statusCode = 200;\nmsg.payload = {\n    days: msg.ctx.days,\n    daily: daily.map((r) => ({ date: r.day, users: Number(r.users), jobs: Number(r.jobs), applications: Number(r.applications) })),\n    openJobsByRegion: bars(regions),\n    openJobsTopProvinces: bars(provinces),\n    openJobsByCategory: bars(categories),\n    shopStatus: status,\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "wires": [
+            [
+                "admin_charts_out"
+            ]
+        ]
+    },
+    {
+        "id": "admin_charts_out",
+        "z": "tab_admin",
+        "x": 1200,
+        "y": 1930,
+        "name": "Send response",
+        "type": "http response",
+        "statusCode": "",
+        "headers": {},
+        "wires": []
     }
 ]

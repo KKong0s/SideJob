@@ -1,0 +1,57 @@
+// Chart tokens shared by the admin chart components (validated palette, light + dark steps)
+:host {
+  --viz-surface: var(--ion-card-background, #fcfcfb);
+  --viz-grid: #e6e5e0;
+  --viz-text-primary: var(--ion-text-color, #0b0b0b);
+  --viz-text-secondary: #52514e;
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+  --viz-series-3: #1baf7a;
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :host {
+    --viz-surface: var(--ion-card-background, #1a1a19);
+    --viz-grid: #383835;
+    --viz-text-secondary: #c3c2b7;
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-series-3: #199e70;
+  }
+}
+
+.table-toggle {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--ion-color-primary);
+  cursor: pointer;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-top: 8px;
+
+  th,
+  td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--viz-grid);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th:first-child,
+  td:first-child {
+    text-align: left;
+  }
+
+  th {
+    color: var(--viz-text-secondary);
+    font-weight: 600;
+  }
+}

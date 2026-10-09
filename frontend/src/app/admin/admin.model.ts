@@ -126,3 +126,18 @@ export interface AdminCategory {
 }
 
 export const ROLE_LABEL: Record<string, string> = { seeker: 'ผู้หางาน', shop: 'ร้านค้า', admin: 'แอดมิน' };
+
+export interface ChartBar {
+  id: number;
+  name: string;
+  value: number;
+}
+
+export interface DashboardCharts {
+  days: number;
+  daily: { date: string; users: number; jobs: number; applications: number }[];
+  openJobsByRegion: ChartBar[];
+  openJobsTopProvinces: ChartBar[];
+  openJobsByCategory: ChartBar[];
+  shopStatus: { verified: number; pending: number; rejected: number; unsubmitted: number };
+}
