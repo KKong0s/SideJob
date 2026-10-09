@@ -1,48 +1,68 @@
-<ion-content class="ion-padding">
-  <div class="auth-page">
-    <div class="brand">
-      <h1>SideJob</h1>
-      <p>หางานพาร์ทไทม์ใกล้บ้าน</p>
+<ion-content class="auth-bg">
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-intro">
+        <div class="auth-logo" aria-hidden="true">S</div>
+        @if (step() === 'email') {
+          <h1>เข้าสู่ระบบ</h1>
+          <p>ด้วยบัญชี SideJob ของคุณ เพื่อหางานพาร์ทไทม์ใกล้บ้าน หรือประกาศหาคนช่วยงานร้าน</p>
+        } @else {
+          <h1>ยินดีต้อนรับ</h1>
+          <button type="button" class="account-chip" (click)="back()" aria-label="เปลี่ยนอีเมล">
+            <span class="chip-avatar" aria-hidden="true">{{ initial() }}</span>
+            <span class="chip-email">{{ form.controls.email.value }}</span>
+            <span class="chip-caret" aria-hidden="true">▾</span>
+          </button>
+        }
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="auth-main">
+        @if (step() === 'email') {
+          <ion-input
+            #emailInput
+            type="email"
+            label="อีเมล"
+            labelPlacement="floating"
+            fill="outline"
+            autocomplete="username email"
+            formControlName="email"
+            errorText="กรุณากรอกอีเมลให้ถูกต้อง"
+          ></ion-input>
+        } @else {
+          <!-- Keeps the email next to the password so browsers save / fill the pair -->
+          <input class="visually-hidden" type="email" autocomplete="username" [value]="form.controls.email.value" readonly tabindex="-1" aria-hidden="true" />
+          <ion-input
+            #passwordInput
+            type="password"
+            label="ป้อนรหัสผ่านของคุณ"
+            labelPlacement="floating"
+            fill="outline"
+            autocomplete="current-password"
+            formControlName="password"
+            errorText="กรุณากรอกรหัสผ่าน"
+          >
+            <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+          </ion-input>
+        }
+
+        @if (error()) {
+          <ion-note color="danger">{{ error() }}</ion-note>
+        }
+
+        <div class="auth-actions">
+          @if (step() === 'email') {
+            <a class="auth-link" routerLink="/register">สร้างบัญชี</a>
+            <ion-button type="submit" shape="round">ถัดไป</ion-button>
+          } @else {
+            <button type="button" class="auth-link" (click)="back()">ย้อนกลับ</button>
+            <ion-button type="submit" shape="round" [disabled]="busy()">
+              @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { เข้าสู่ระบบ }
+            </ion-button>
+          }
+        </div>
+      </form>
     </div>
 
-    <h2>เข้าสู่ระบบ</h2>
-
-    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
-      <ion-input
-        type="email"
-        label="อีเมล"
-        labelPlacement="floating"
-        fill="outline"
-        autocomplete="email"
-        formControlName="email"
-        errorText="กรุณากรอกอีเมลให้ถูกต้อง"
-      ></ion-input>
-
-      <ion-input
-        type="password"
-        label="รหัสผ่าน"
-        labelPlacement="floating"
-        fill="outline"
-        autocomplete="current-password"
-        formControlName="password"
-        errorText="กรุณากรอกรหัสผ่าน"
-      >
-        <ion-input-password-toggle slot="end"></ion-input-password-toggle>
-      </ion-input>
-
-      @if (error()) {
-        <ion-note color="danger">{{ error() }}</ion-note>
-      }
-
-      <ion-button type="submit" expand="block" [disabled]="busy()">
-        @if (busy()) { <ion-spinner name="dots"></ion-spinner> } @else { เข้าสู่ระบบ }
-      </ion-button>
-    </form>
-
     <app-google-auth (signedIn)="goHome($event)"></app-google-auth>
-
-    <p class="switch">
-      ยังไม่มีบัญชี? <a routerLink="/register">สมัครสมาชิก</a>
-    </p>
   </div>
 </ion-content>

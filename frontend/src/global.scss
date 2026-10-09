@@ -41,38 +41,191 @@
 @import "@fontsource/noto-sans-thai/500.css";
 @import "@fontsource/noto-sans-thai/700.css";
 
-/* Login / register layout */
-.auth-page {
-  max-width: 420px;
-  margin: 0 auto;
-  padding-top: 24px;
+/* Login / register: a centered card, intro on the left and the form on the right (stacked on phones) */
+.auth-bg {
+  --background: #f0f4f9;
+  --auth-card: #ffffff;
+  --auth-text-secondary: #444746;
+}
+@media (prefers-color-scheme: dark) {
+  .auth-bg {
+    --background: #0e0f11;
+    --auth-card: #1e1f22;
+    --auth-text-secondary: #c4c7c5;
+  }
+}
 
-  .brand {
-    text-align: center;
-    margin-bottom: 24px;
+.auth-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 16px;
+}
 
-    h1 {
-      margin: 0;
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--ion-color-primary);
-    }
+.auth-card {
+  width: 100%;
+  max-width: 1040px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px 48px;
+  padding: 40px;
+  border-radius: 28px;
+  background: var(--auth-card);
+  /* inputs (floating label notch, autofill cover) paint with the card color */
+  --ion-background-color: var(--auth-card);
+}
 
-    p {
-      margin: 4px 0 0;
-      color: var(--ion-color-medium);
-    }
+.auth-intro {
+  min-width: 0;
+
+  h1 {
+    margin: 24px 0 16px;
+    font-size: 2.25rem;
+    font-weight: 500;
+    line-height: 1.25;
   }
 
-  .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--auth-text-secondary);
+  }
+}
+
+.auth-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ion-color-primary);
+}
+
+.auth-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* lines the first field up with the heading */
+  padding-top: 72px;
+}
+
+.auth-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+
+  ion-button {
+    --padding-start: 24px;
+    --padding-end: 24px;
+    min-width: 96px;
+    margin: 0 0 0 auto;
+  }
+}
+
+.auth-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ion-color-primary);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--ion-color-step-300, #c4c7c5);
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ion-text-color);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(var(--ion-color-primary-rgb), 0.08);
+  }
+}
+
+.chip-avatar {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ion-color-primary);
+}
+
+.chip-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+@media (max-width: 768px) {
+  .auth-card {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 28px 24px;
   }
 
-  .switch {
-    margin-top: 24px;
-    text-align: center;
+  .auth-intro h1 {
+    margin: 16px 0 8px;
+    font-size: 1.75rem;
+  }
+
+  .auth-main {
+    padding-top: 0;
+  }
+}
+
+/* Phones: drop the card and use the whole screen */
+@media (max-width: 480px) {
+  .auth-bg {
+    --background: var(--auth-card);
+  }
+
+  .auth-shell {
+    justify-content: flex-start;
+    padding: 16px;
+  }
+
+  .auth-card {
+    padding: 8px 0;
   }
 }
 
