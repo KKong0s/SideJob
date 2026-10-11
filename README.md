@@ -7,6 +7,21 @@
 
 ต้องมี Docker Desktop และ Node.js 24
 
+### แบบง่าย (Windows): ดับเบิลคลิก
+
+- **`start.bat`** เปิดทุกอย่างให้เอง:
+  1. เปิด Docker Desktop ถ้ายังไม่เปิด
+  2. รัน `docker compose up -d` แล้วรอจน API พร้อม
+  3. รัน `npm install` เฉพาะตอนที่ยังไม่เคยติดตั้ง หรือ `package-lock.json` เปลี่ยน
+  4. เปิดหน้าต่าง "SideJob Frontend" (`npm start`) แล้วเปิด http://localhost:4200 ให้อัตโนมัติ
+  - ถ้ามีส่วนไหนทำงานอยู่แล้วจะข้ามไป รันซ้ำได้
+  - ต้องเปิดหน้าต่าง "SideJob Frontend" ทิ้งไว้ระหว่างใช้งาน
+- **`stop.bat`** ปิดเว็บที่พอร์ต 4200 และหยุด container ของ SideJob (ข้อมูลใน MySQL ไม่หาย และไม่แตะ Docker stack อื่นในเครื่อง)
+- ครั้งแรกต้องมีไฟล์ `.env` ก่อน (ดูข้อ 1 ด้านล่าง)
+- container ตั้งค่า `restart: unless-stopped` ไว้ ถ้าไม่ได้สั่ง `stop.bat` แค่เปิด Docker Desktop container ก่อนหน้าก็ทำงานต่อเอง
+
+### แบบสั่งเอง
+
 ```bash
 # 1) ตั้งค่า secret (ครั้งแรก)
 cp .env.example .env        # แล้วแก้ค่าใน .env
