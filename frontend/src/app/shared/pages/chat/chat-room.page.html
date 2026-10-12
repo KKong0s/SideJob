@@ -40,7 +40,7 @@
           </div>
           <span class="meta">
             {{ time(m) }}
-            @if (m.id === lastMineId() && (conversation()?.otherLastReadId ?? 0) >= m.id) { · อ่านแล้ว }
+            @if (m.id === lastMineId() && (conversation()?.otherLastReadId ?? 0) >= m.id) { <span class="read">· อ่านแล้ว</span> }
           </span>
         </div>
       }

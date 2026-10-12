@@ -39,7 +39,7 @@ import { PagedList } from '../../../shared/utils/paged-list';
       </ion-refresher>
       <app-page-state
         [state]="list.state()"
-        [thumbnail]="true"
+        skeleton="job"
         emptyIcon="bookmark-outline"
         emptyText="ยังไม่มีงานที่บันทึกไว้"
         emptyHint="กดไอคอนบุ๊กมาร์กในหน้ารายละเอียดงานเพื่อเก็บไว้ดูทีหลัง"

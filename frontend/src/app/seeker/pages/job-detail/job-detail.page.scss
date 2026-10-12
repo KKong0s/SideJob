@@ -107,3 +107,8 @@ h3 {
   text-decoration: none;
   font-size: 0.9rem;
 }
+
+/* Saving acknowledges the tap with a short pop (removing stays quiet) */
+.saved-icon {
+  animation: sj-pop 360ms var(--sj-ease-out);
+}

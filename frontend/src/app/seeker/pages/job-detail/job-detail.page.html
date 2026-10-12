@@ -6,7 +6,12 @@
       <ion-buttons slot="end">
         <ion-button (click)="report()" aria-label="รายงานประกาศนี้"><ion-icon slot="icon-only" name="flag-outline"></ion-icon></ion-button>
         <ion-button (click)="toggleSave()" [disabled]="savingBookmark()" [attr.aria-label]="s.saved ? 'นำออกจากงานที่บันทึก' : 'บันทึกงาน'">
-          <ion-icon slot="icon-only" [name]="s.saved ? 'bookmark' : 'bookmark-outline'"></ion-icon>
+          <!-- Separate icons so saving re-creates the filled one and plays its pop -->
+          @if (s.saved) {
+            <ion-icon slot="icon-only" name="bookmark" class="saved-icon"></ion-icon>
+          } @else {
+            <ion-icon slot="icon-only" name="bookmark-outline"></ion-icon>
+          }
         </ion-button>
       </ion-buttons>
     }

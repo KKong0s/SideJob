@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "src/app/seeker/pages/job-detail/job-detail.page.html"
+        ],
+        "createdAt": "2026-10-12T20:02:26.494Z",
+        "reason": "Claude: shop image uses an Angular [src] binding to uploaded files; static scan cannot see bound src"
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "src/app/shared/components/top-nav/top-nav.component.ts"
+        ],
+        "createdAt": "2026-10-12T20:03:01.822Z",
+        "reason": "Claude: avatar img uses an Angular [src] binding inside @if (avatarUrl()); static scan cannot see bound src"
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
@@ -17,7 +17,10 @@ import { NotificationService } from '../../services/notification.service';
     <a class="bell" routerLink="/notifications" [attr.aria-label]="label()">
       <ion-icon name="notifications-outline" aria-hidden="true"></ion-icon>
       @if (notifications.unread() > 0) {
-        <span class="count" aria-hidden="true">{{ notifications.unread() > 99 ? '99+' : notifications.unread() }}</span>
+        <!-- Re-created (and so re-popped) only when the count goes up -->
+        @for (k of [bump()]; track k) {
+          <span class="count" [class.bump]="k > 0" aria-hidden="true">{{ notifications.unread() > 99 ? '99+' : notifications.unread() }}</span>
+        }
       }
     </a>
   `,
@@ -38,8 +41,24 @@ import { NotificationService } from '../../services/notification.service';
       font-size: 22px;
       text-decoration: none;
     }
+    .bell {
+      transition:
+        background-color var(--sj-dur-state) var(--sj-ease-out),
+        transform var(--sj-dur-press) var(--sj-ease-out);
+    }
     .bell:hover {
       background: var(--ion-color-light-shade);
+    }
+    .bell:active {
+      transform: scale(0.94);
+    }
+    .count.bump {
+      animation: sj-pop 360ms var(--sj-ease-out);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .bell:active {
+        transform: none;
+      }
     }
     .count {
       position: absolute;
@@ -70,7 +89,16 @@ export class BellButtonComponent {
     return n ? `การแจ้งเตือน ยังไม่อ่าน ${n} รายการ` : 'การแจ้งเตือน';
   });
 
+  /** Bumped each time the unread count rises, to replay the badge pop */
+  readonly bump = signal(0);
+
   constructor() {
     addIcons({ notificationsOutline });
+    let previous = this.notifications.unread();
+    effect(() => {
+      const n = this.notifications.unread();
+      if (n > previous) this.bump.update((v) => v + 1);
+      previous = n;
+    });
   }
 }

@@ -55,7 +55,7 @@ type Filter = keyof typeof FILTERS;
       </ion-refresher>
       <app-page-state
         [state]="list.state()"
-        [thumbnail]="true"
+        skeleton="job"
         emptyIcon="document-text-outline"
         [emptyText]="filter() === 'active' ? 'ยังไม่มีใบสมัครที่กำลังดำเนินการ' : 'ยังไม่มีใบสมัคร'"
         actionText="ไปค้นหางาน"

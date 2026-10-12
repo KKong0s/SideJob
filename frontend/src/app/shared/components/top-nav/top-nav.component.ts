@@ -84,6 +84,18 @@ export interface NavItem {
       font-size: 15px;
       text-decoration: none;
       white-space: nowrap;
+      transition:
+        background-color var(--sj-dur-state) var(--sj-ease-out),
+        color var(--sj-dur-state) var(--sj-ease-out),
+        transform var(--sj-dur-press) var(--sj-ease-out);
+    }
+    .pill:active {
+      transform: scale(0.97);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pill:active {
+        transform: none;
+      }
     }
     .pill:hover {
       color: var(--sj-dark);

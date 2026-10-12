@@ -44,8 +44,11 @@ import { timeAgo } from '../../utils/format';
       border-radius: var(--sj-radius-card);
       border-bottom: 1.5px solid var(--sj-divider);
       cursor: pointer;
-      transition: background-color 0.15s;
+      transition: background-color var(--sj-dur-state) var(--sj-ease-out);
       min-width: 0;
+      /* New rows rise in once; lists pass --sj-i (capped) for a short stagger */
+      animation: sj-rise var(--sj-dur-enter) var(--sj-ease-out) backwards;
+      animation-delay: calc(min(var(--sj-i, 0), 10) * 30ms);
     }
     :host(:hover),
     :host(:focus-visible) {

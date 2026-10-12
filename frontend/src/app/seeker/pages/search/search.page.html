@@ -55,7 +55,7 @@
 
     <app-page-state
       [state]="list.state()"
-      [thumbnail]="true"
+      skeleton="job-grid"
       emptyIcon="search-outline"
       [emptyText]="area.selection() ? 'ยังไม่มีงานในพื้นที่นี้' : 'ไม่พบงานที่ตรงกับตัวกรอง'"
       emptyHint="ลองขยายพื้นที่หรือเปลี่ยนตัวกรอง"
@@ -64,8 +64,8 @@
       (retry)="list.reload()"
     >
       <div class="job-grid">
-        @for (job of list.items(); track job.id) {
-          <app-job-card [job]="job" [shopName]="job.shop.name" [postedAt]="job.createdAt" (click)="open(job)"></app-job-card>
+        @for (job of list.items(); track job.id; let i = $index) {
+          <app-job-card [style.--sj-i]="i % 20" [job]="job" [shopName]="job.shop.name" [postedAt]="job.createdAt" (click)="open(job)"></app-job-card>
         }
       </div>
     </app-page-state>

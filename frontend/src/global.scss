@@ -61,6 +61,75 @@
   --sj-radius-card: 18px;
   --sj-radius-hero: 32px;
   --sj-focus: 0 0 0 2px #ffffff, 0 0 0 4px #1f3a13;
+
+  /* Motion: fast feedback, short state changes, exits faster than entrances */
+  --sj-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --sj-dur-press: 120ms;
+  --sj-dur-state: 160ms;
+  --sj-dur-enter: 280ms;
+}
+
+/* ==========================================================================
+   Motion keyframes (global so component styles can reference them by name)
+   Every element starts in its visible end state; `backwards` only covers the delay.
+   ========================================================================== */
+@keyframes sj-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes sj-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+@keyframes sj-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes sj-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@keyframes sj-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: same keyframe names, opacity only, so state changes still read */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes sj-rise {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sj-slide-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sj-bubble-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sj-pop {
+    from {
+      opacity: 0.4;
+    }
+  }
 }
 
 body {
@@ -114,6 +183,13 @@ ion-button:not([size='small']):not(ion-buttons ion-button) {
   font-size: 16px;
   --padding-start: 24px;
   --padding-end: 24px;
+}
+/* Physical press: buttons sink slightly while held */
+ion-button {
+  transition: transform var(--sj-dur-press) var(--sj-ease-out);
+}
+ion-button:not(.button-disabled):active {
+  transform: scale(0.98);
 }
 ion-button[size='small'] {
   height: 44px;
@@ -192,6 +268,13 @@ ion-chip {
   margin: 0;
   font-weight: 500;
   opacity: 1;
+  transition:
+    background-color var(--sj-dur-state) var(--sj-ease-out),
+    color var(--sj-dur-state) var(--sj-ease-out),
+    transform var(--sj-dur-press) var(--sj-ease-out);
+}
+ion-chip:active {
+  transform: scale(0.97);
 }
 ion-chip.chip-outline {
   background: var(--sj-chip);
@@ -456,4 +539,24 @@ ion-input input:-webkit-autofill:focus {
 ion-button,
 ion-segment-button {
   text-transform: none;
+}
+
+/* Login steps: the swapped-in step slides in from the direction of travel */
+.sj-step-in {
+  animation: sj-slide-in var(--sj-dur-enter) var(--sj-ease-out) backwards;
+}
+.auth-lead.sj-step-in,
+.account-chip.sj-step-in {
+  animation-delay: 40ms;
+}
+ion-input.sj-step-in {
+  animation-delay: 80ms;
+}
+
+/* No spatial movement on press when the user asked for less motion */
+@media (prefers-reduced-motion: reduce) {
+  ion-button:not(.button-disabled):active,
+  ion-chip:active {
+    transform: none;
+  }
 }

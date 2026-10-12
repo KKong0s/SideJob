@@ -58,7 +58,7 @@ import { AdminService } from '../../admin.service';
       <ion-refresher slot="fixed" (ionRefresh)="list.refresh($event)">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
-      <app-page-state [state]="list.state()" [thumbnail]="true" emptyIcon="briefcase-outline" emptyText="ไม่พบประกาศ" (retry)="list.reload()">
+      <app-page-state [state]="list.state()" skeleton="job" emptyIcon="briefcase-outline" emptyText="ไม่พบประกาศ" (retry)="list.reload()">
         <ion-list>
           @for (job of list.items(); track job.id) {
             <app-job-card [job]="job" [shopName]="job.shop.name" [shopImage]="job.shop.imagePath" (click)="open(job)">

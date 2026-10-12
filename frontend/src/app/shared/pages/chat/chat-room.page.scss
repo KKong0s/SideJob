@@ -104,6 +104,18 @@
   margin: 2px 6px 0;
 }
 
+/* The newest message grows out of its sender's corner; older history stays still */
+.row:last-child .bubble {
+  animation: sj-bubble-in 200ms var(--sj-ease-out);
+  transform-origin: bottom left;
+}
+.row.mine:last-child .bubble {
+  transform-origin: bottom right;
+}
+.read {
+  animation: sj-fade var(--sj-dur-enter) var(--sj-ease-out);
+}
+
 .composer {
   --padding-start: 4px;
   --padding-end: 4px;

@@ -74,6 +74,7 @@ type Filter = JobStatus | 'all';
 
       <app-page-state
         [state]="list.state()"
+        skeleton="job"
         emptyIcon="briefcase-outline"
         [emptyText]="filter() === 'open' ? 'ยังไม่มีประกาศที่เปิดรับ' : 'ไม่มีประกาศ'"
         [actionText]="verified() ? 'โพสต์งานใหม่' : ''"
