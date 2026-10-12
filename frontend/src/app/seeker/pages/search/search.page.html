@@ -33,6 +33,11 @@
             <ion-icon slot="start" name="location-outline" aria-hidden="true"></ion-icon>
             <span class="area-text">{{ areaLabel() }}</span>
           </ion-button>
+          @if (area.selection()?.provinceId) {
+            <ion-button class="area-clear" (click)="clearArea()" [attr.aria-label]="'ล้างพื้นที่ ' + areaLabel() + ' แล้วดูงานทุกพื้นที่'">
+              <ion-icon slot="icon-only" name="close" aria-hidden="true"></ion-icon>
+            </ion-button>
+          }
         </div>
       </div>
     </section>

@@ -19,7 +19,7 @@ import {
   ModalController,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { checkmarkCircle, chevronBack, ellipseOutline, globeOutline } from 'ionicons/icons';
+import { checkmarkCircle, chevronBack, ellipseOutline, globeOutline, refreshOutline } from 'ionicons/icons';
 
 import { AreaCounts, AreaSelection } from '../../models/search.model';
 import { BANGKOK_ID, District, GeoService, Province } from '../../services/geo.service';
@@ -91,6 +91,9 @@ export class AreaPickerComponent implements OnInit {
     return { provinces, districts };
   });
 
+  /** Anything to clear: past the region step, a search typed, or districts ticked */
+  readonly canReset = computed(() => this.step() !== 'region' || !!this.query() || this.picked().size > 0);
+
   readonly title = computed(() => {
     switch (this.step()) {
       case 'province':
@@ -103,7 +106,7 @@ export class AreaPickerComponent implements OnInit {
   });
 
   constructor() {
-    addIcons({ checkmarkCircle, chevronBack, ellipseOutline, globeOutline });
+    addIcons({ checkmarkCircle, chevronBack, ellipseOutline, globeOutline, refreshOutline });
   }
 
   ngOnInit(): void {
@@ -166,6 +169,15 @@ export class AreaPickerComponent implements OnInit {
       else next.add(id);
       return next;
     });
+  }
+
+  /** Clears everything picked so far and starts again from the region list */
+  reset(): void {
+    this.query.set('');
+    this.picked.set(new Set());
+    this.provinceId.set(null);
+    this.regionId.set(null);
+    this.step.set('region');
   }
 
   wholeProvince(): void {

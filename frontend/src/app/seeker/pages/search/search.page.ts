@@ -18,7 +18,7 @@ import {
   RefresherCustomEvent,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { chevronDown, locationOutline, optionsOutline, searchOutline } from 'ionicons/icons';
+import { chevronDown, close, locationOutline, optionsOutline, searchOutline } from 'ionicons/icons';
 
 import { BrandLogoComponent } from '../../../shared/components/brand-logo/brand-logo.component';
 import { BellButtonComponent } from '../../../shared/components/bell-button/bell-button.component';
@@ -91,7 +91,7 @@ export class SearchPage {
   private started = false;
 
   constructor() {
-    addIcons({ chevronDown, locationOutline, optionsOutline, searchOutline });
+    addIcons({ chevronDown, close, locationOutline, optionsOutline, searchOutline });
     registerCategoryIcons();
   }
 
@@ -144,6 +144,12 @@ export class SearchPage {
     event?.preventDefault();
     const input = await this.searchbar()?.getInputElement();
     this.setQuery(input?.value ?? this.query());
+  }
+
+  /** The ✕ next to the area button: back to every area */
+  async clearArea(): Promise<void> {
+    await this.area.set(null);
+    void this.list.reload();
   }
 
   /** Empty-state button: widen the area step by step, then clear filters */

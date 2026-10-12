@@ -71,6 +71,18 @@ h1 {
   }
 }
 
+/* ✕ beside the area button: round, chip surface, same 52px height */
+.hero-actions ion-button.area-clear {
+  flex: none;
+  width: 52px;
+  --padding-start: 0;
+  --padding-end: 0;
+  --border-radius: 50%;
+  --background: var(--sj-chip);
+  --background-hover: var(--sj-selected);
+  --color: var(--sj-dark);
+}
+
 /* ---- Category chips: wrap on wide screens, scroll sideways on phones ---- */
 .chips {
   display: flex;

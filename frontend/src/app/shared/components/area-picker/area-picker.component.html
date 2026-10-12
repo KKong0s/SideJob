@@ -8,6 +8,14 @@
       }
     </ion-buttons>
     <ion-title>{{ title() }}</ion-title>
+    @if (canReset()) {
+      <ion-buttons slot="end">
+        <ion-button (click)="reset()" aria-label="ล้างที่เลือกแล้วเริ่มเลือกภาคใหม่">
+          <ion-icon slot="start" name="refresh-outline" aria-hidden="true"></ion-icon>
+          ล้าง
+        </ion-button>
+      </ion-buttons>
+    }
   </ion-toolbar>
   <ion-toolbar>
     <ion-searchbar
