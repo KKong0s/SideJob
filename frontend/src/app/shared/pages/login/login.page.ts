@@ -9,6 +9,7 @@ import { GoogleAuthComponent } from '../../components/google-auth/google-auth.co
 import { SessionUser } from '../../models/session.model';
 import { AuthService } from '../../services/auth.service';
 import { toApiError } from '../../utils/api-error';
+import { hideSplash, showSplash } from '../../utils/splash';
 
 type Step = 'email' | 'password';
 
@@ -82,8 +83,14 @@ export class LoginPage {
   }
 
   async goHome(user: SessionUser): Promise<void> {
-    this.form.reset();
-    this.step.set('email');
-    await this.router.navigateByUrl(this.auth.homeUrl(user), { replaceUrl: true });
+    // The runner splash covers the hand-over from login to the user's home page
+    showSplash();
+    try {
+      this.form.reset();
+      this.step.set('email');
+      await this.router.navigateByUrl(this.auth.homeUrl(user), { replaceUrl: true });
+    } finally {
+      void hideSplash();
+    }
   }
 }
