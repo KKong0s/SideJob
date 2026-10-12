@@ -11,15 +11,156 @@
   <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="format-detection" content="telephone=no" />
   <meta name="msapplication-tap-highlight" content="no" />
+  <!-- Phone browser chrome matches the dark-green splash; hideSplash() switches it back to white -->
+  <meta name="theme-color" content="#FFFFFF" media="(min-width: 768px) and (min-height: 501px), (min-width: 768px) and (orientation: portrait)" />
+  <meta name="theme-color" content="#1F3A13" media="(max-width: 767px), (max-height: 500px) and (orientation: landscape)" />
 
   <link rel="icon" type="image/png" href="assets/icon/favicon.png" />
 
   <!-- add to homescreen for ios -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+  <script>
+    window.__sjSplashStart = Date.now();
+  </script>
+
+  <!-- Boot splash: plain HTML + CSS so it paints before Angular loads (removed by hideSplash()) -->
+  <style>
+    #sj-splash { position: fixed; inset: 0; z-index: 9999; box-sizing: border-box;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+      padding: 32px 24px; background: #FFFFFF; color: #1F2A16; overflow: hidden;
+      font-family: 'Anuphan', system-ui, sans-serif; transition: opacity .3s ease;
+      -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+    #sj-splash.sj-hide { opacity: 0; pointer-events: none; }
+    .sj-logo { margin: 0; display: flex; align-items: center; gap: 10px;
+      font-family: 'Prompt', sans-serif; font-weight: 700; font-size: 26px; color: #1F3A13; }
+    .sj-dot { width: 16px; height: 16px; border-radius: 50%; background: #A6E36B; box-shadow: 0 0 0 3px #1F3A13; }
+    .sj-center { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+    .sj-stage { width: 340px; max-width: 80vw; aspect-ratio: 1; border-radius: 50%; background: #F6F6F1; display: grid; place-items: center; }
+    .sj-runner { width: 86%; overflow: visible; display: block; }
+    .sj-text { text-align: center; }
+    .sj-text h1 { margin: 0; font-family: 'Prompt', sans-serif; font-weight: 600; font-size: 26px; color: #1F3A13; }
+    .sj-text p { margin: 8px 0 0; font-size: 16px; color: #4A5541; }
+    .sj-progress { width: 260px; max-width: 70vw; height: 10px; border-radius: 999px; background: #EEF0E8; overflow: hidden; }
+    .sj-bar { width: 40%; height: 100%; border-radius: 999px; background: #1F3A13; animation: sjBar 1.4s ease-in-out infinite; }
+    .sj-tip { margin: 12px 0 0; max-width: 440px; padding: 12px 20px; border-radius: 999px; background: #F2F9E8; font-size: 14px; color: #4A5541; text-align: center; }
+    .sj-dots, .sj-footer { display: none; }
+
+    /* Runner animation */
+    .sj-arm-f, .sj-arm-b { transform-box: view-box; transform-origin: 128px 76px; }
+    .sj-leg-f, .sj-leg-b { transform-box: view-box; transform-origin: 116px 122px; }
+    .sj-arm-f { animation: sjArmF .6s ease-in-out infinite; }
+    .sj-arm-b { animation: sjArmB .6s ease-in-out infinite; }
+    .sj-leg-f { animation: sjLegF .6s ease-in-out infinite; }
+    .sj-leg-b { animation: sjLegB .6s ease-in-out infinite; }
+    .sj-body { animation: sjBob .3s ease-in-out infinite alternate; }
+    .sj-ground { animation: sjGround .6s linear infinite; }
+    .sj-speed { animation: sjSpeed .6s ease-in-out infinite; }
+    @keyframes sjArmF { 0%,100% { transform: rotate(-40deg) } 50% { transform: rotate(35deg) } }
+    @keyframes sjArmB { 0%,100% { transform: rotate(35deg) } 50% { transform: rotate(-40deg) } }
+    @keyframes sjLegF { 0%,100% { transform: rotate(32deg) } 50% { transform: rotate(-30deg) } }
+    @keyframes sjLegB { 0%,100% { transform: rotate(-30deg) } 50% { transform: rotate(32deg) } }
+    @keyframes sjBob { from { transform: translateY(0) } to { transform: translateY(-5px) } }
+    @keyframes sjGround { to { stroke-dashoffset: 48 } }
+    @keyframes sjSpeed { 0%,100% { opacity: .25; transform: translateX(6px) } 50% { opacity: 1; transform: translateX(-6px) } }
+    @keyframes sjBar { 0% { transform: translateX(-110%) } 100% { transform: translateX(260%) } }
+    @keyframes sjDot { 0%,100% { opacity: .3; transform: scale(.8) } 50% { opacity: 1; transform: scale(1) } }
+
+    /* Phones (portrait, or sideways with a short screen): full-screen dark green,
+       logo on top, tagline at the bottom, three dots instead of the bar */
+    @media (max-width: 767px), (max-height: 500px) and (orientation: landscape) {
+      #sj-splash { height: 100vh; height: 100dvh; justify-content: space-between; gap: 20px;
+        padding: max(72px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(48px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+        background: #1F3A13; color: #F6F6F1; }
+      .sj-logo { color: #F6F6F1; }
+      .sj-dot { box-shadow: 0 0 0 3px #F6F6F1; }
+      .sj-center { flex: 1; justify-content: center; gap: 24px; min-height: 0; }
+      /* Never taller than the space left between logo and footer */
+      .sj-stage { width: min(270px, 72vw, 42dvh); max-width: none; }
+      .sj-text h1 { font-size: 24px; color: #F6F6F1; }
+      .sj-text p { font-size: 15px; color: #CFE3BF; }
+      .sj-progress, .sj-tip { display: none; }
+      .sj-dots { display: flex; gap: 10px; }
+      .sj-dots span { width: 10px; height: 10px; border-radius: 50%; background: #A6E36B; animation: sjDot 1.2s ease-in-out infinite; }
+      .sj-dots span:nth-child(2) { animation-delay: .2s; }
+      .sj-dots span:nth-child(3) { animation-delay: .4s; }
+      .sj-footer { display: block; margin: 0; font-size: 13px; color: #CFE3BF; text-align: center; }
+    }
+
+    /* Short phones (e.g. iPhone SE): tighter top/bottom so nothing crowds */
+    @media (max-width: 767px) and (max-height: 700px) {
+      #sj-splash { padding-top: max(40px, env(safe-area-inset-top)); padding-bottom: max(28px, env(safe-area-inset-bottom)); }
+      .sj-center { gap: 16px; }
+      .sj-text h1 { font-size: 21px; }
+    }
+
+    /* Phones held sideways: runner beside the text */
+    @media (max-height: 500px) and (orientation: landscape) {
+      #sj-splash { justify-content: center; gap: 12px; padding: max(16px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left)); }
+      .sj-center { flex: none; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px 32px; }
+      .sj-stage { width: min(200px, 56dvh); }
+      .sj-text { text-align: left; }
+      .sj-dots { flex-basis: 100%; justify-content: center; }
+      .sj-footer, .sj-tip, .sj-progress { display: none; }
+    }
+
+    #sj-splash.sj-failed *, #sj-splash.sj-failed { animation: none !important; }
+
+    @media (prefers-reduced-motion: reduce) {
+      #sj-splash *, #sj-splash { animation: none !important; transition: none !important; }
+    }
+  </style>
 </head>
 
 <body>
+  <div id="sj-splash" role="status" aria-live="polite">
+    <p class="sj-logo"><span class="sj-dot"></span>SideJob</p>
+    <div class="sj-center">
+      <div class="sj-stage">
+        <svg class="sj-runner" viewBox="0 0 240 220" fill="none" stroke="#1F2A16" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line class="sj-ground" x1="10" y1="202" x2="232" y2="202" stroke-dasharray="20 4 6 18"/>
+          <g class="sj-speed"><path d="M30 84 h34 M18 108 h40 M34 132 h28" stroke-width="3"/></g>
+          <g class="sj-body">
+            <g class="sj-arm-b">
+              <path d="M126 76 L 128 100 L 142 108" stroke-width="9"/>
+              <path d="M126 76 L 128 100 L 142 108" stroke="#FFFFFF" stroke-width="4.5"/>
+            </g>
+            <g class="sj-leg-b">
+              <path d="M116 122 L 120 156 L 116 186" stroke-width="10"/>
+              <path d="M112 188 L 130 190" stroke-width="7"/>
+            </g>
+            <rect x="96" y="74" width="26" height="36" rx="8" fill="#A6E36B" transform="rotate(-14 109 92)"/>
+            <path d="M120 66 C 132 62 146 68 142 84 L 128 124 L 104 120 C 106 100 110 80 120 66 Z" fill="#FFFFFF"/>
+            <path d="M118 70 L 108 108" stroke-width="2"/>
+            <g class="sj-leg-f">
+              <path d="M116 122 L 120 156 L 116 186" stroke-width="10"/>
+              <path d="M112 188 L 130 190" stroke-width="7"/>
+            </g>
+            <circle cx="138" cy="44" r="18" fill="#FFFFFF"/>
+            <path d="M122 42 C 118 24 136 16 147 23 C 156 21 162 32 156 42 C 150 35 141 35 134 38 C 128 36 124 38 122 42 Z" fill="#1F2A16"/>
+            <circle cx="147" cy="47" r="2.2" fill="#1F2A16" stroke="none"/>
+            <path d="M142 55 Q147 58 152 53"/>
+            <g class="sj-arm-f">
+              <path d="M128 76 L 130 100 L 144 108" stroke-width="9"/>
+              <path d="M128 76 L 130 100 L 144 108" stroke="#FFFFFF" stroke-width="4.5"/>
+              <circle cx="146" cy="109" r="4" fill="#FFFFFF" stroke-width="2"/>
+            </g>
+          </g>
+          <rect x="182" y="30" width="44" height="32" rx="8" fill="#A6E36B"/>
+          <path d="M192 42 h24 M192 51 h14" stroke-width="2.4"/>
+        </svg>
+      </div>
+      <div class="sj-text">
+        <h1>กำลังวิ่งไปหางานให้คุณ…</h1>
+        <p>รอแป๊บเดียว เดี๋ยวก็ถึง</p>
+      </div>
+      <div class="sj-progress" aria-hidden="true"><div class="sj-bar"></div></div>
+      <div class="sj-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="sj-tip">เคล็ดลับ: ตั้งพื้นที่ที่สนใจในโปรไฟล์ จะเห็นงานใกล้บ้านก่อนใคร</p>
+    </div>
+    <p class="sj-footer">หางานพาร์ทไทม์ใกล้บ้าน</p>
+  </div>
   <app-root></app-root>
 </body>
 
