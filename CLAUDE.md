@@ -292,7 +292,7 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 
 ### แชร์ลิงก์ชั่วคราว (ตามที่สั่ง 2026-10-13)
 - ผู้ใช้เลือก: ลิงก์สุ่ม Cloudflare Quick Tunnel (ไม่ต้องมีบัญชี) ไม่ต้องใช้ Google ในโหมดนี้, ไม่เปลี่ยนรหัสแอดมิน (แชร์ให้โทรศัพท์ตัวเองเท่านั้น)
-- `share.bat` → เช็ก API → `npm run share` (configuration `share` ใน angular.json: build แบบ production + `environment.share.ts` URL แบบ relative + `googleClientId` ว่าง, serve พอร์ต 4300, `allowedHosts` เฉพาะ `.trycloudflare.com`, proxy `proxy.share.mjs`) → `cloudflared tunnel --url http://localhost:4300`; ปิดหน้าต่าง = ลิงก์ตาย (ทดสอบแล้วได้ 502)
+- `share.bat` → เช็ก API → `npm run share` (configuration `share` ใน angular.json: build แบบ production + `environment.share.ts` URL แบบ relative + `googleClientId` ว่าง, serve พอร์ต 4300, `allowedHosts` เฉพาะ `.trycloudflare.com`, proxy `proxy.share.mjs`) → `cloudflared tunnel --url http://localhost:4300`; ปิดหน้าต่าง = ลิงก์ตาย (ทดสอบแล้วได้ 502); เว็บโหมด share รันแบบ `start /b` ในหน้าต่างเดียวกัน (log ไป `%TEMP%\sidejob-share-web.log`) และ `scripts/share-link.ps1` อ่านลิงก์จาก metrics ของ cloudflared (`127.0.0.1:20241/quicktunnel` ต้องเป็น 127.0.0.1 เพราะ `localhost` ไปลอง IPv6 ก่อนแล้ว time out) แสดงในกรอบ + copy ลง clipboard
 - proxy ส่งต่อเฉพาะ `/api`, `/uploads`, `/ws/chat` และตั้ง Origin ของ WebSocket เป็น `http://localhost:4200` จึงไม่ต้องแก้ backend; ทดสอบผ่านลิงก์จริงแล้ว: หน้าเว็บ, API, รูป, ล็อกอิน, WebSocket `auth.ok`, host อื่นได้ 403, path ของ Node-RED editor ตกไปหน้า SideJob
 
 ### สิ่งที่ยังไม่ได้ทำ / ข้อจำกัดตอนนี้

@@ -123,10 +123,10 @@ bash database/demo/seed-demo.sh   # รันซ้ำได้ ข้อมู�
 ดับเบิลคลิก **`share.bat`** (ต้องติดตั้ง `cloudflared` ก่อน: `winget install --id Cloudflare.cloudflared -e`)
 
 1. เช็กว่า API เปิดอยู่ (ถ้า Docker ยังไม่เปิด ให้รัน `start.bat` ก่อน)
-2. เปิดเว็บโหมด share ที่พอร์ต 4300 ในหน้าต่าง "SideJob Share Web" (`npm run share`)
-3. เปิด Cloudflare Quick Tunnel แล้วแสดงลิงก์ `https://….trycloudflare.com` ในกรอบ ให้ copy ไปส่ง
+2. เปิดเว็บโหมด share ที่พอร์ต 4300 เป็นเบื้องหลังในหน้าต่างเดียวกัน (`npm run share`, log อยู่ที่ `%TEMP%\sidejob-share-web.log`)
+3. เปิด Cloudflare Quick Tunnel แล้วแสดงลิงก์ `https://….trycloudflare.com` ในกรอบสีเขียว และ **copy ลง clipboard ให้อัตโนมัติ** (`scripts/share-link.ps1` อ่านลิงก์จาก `http://127.0.0.1:20241/quicktunnel` ของ cloudflared)
 
-- ลิงก์ใช้ได้**เฉพาะตอนหน้าต่าง share.bat เปิดอยู่** กด Ctrl+C หรือปิดหน้าต่าง ลิงก์ก็ใช้ไม่ได้ทันที (และหน้าต่างเว็บโหมด share จะปิดตาม) เปิดใหม่ทุกครั้งจะได้ลิงก์ใหม่
+- ลิงก์ใช้ได้**เฉพาะตอนหน้าต่าง share.bat เปิดอยู่** กด Ctrl+C หรือปิดหน้าต่าง ลิงก์ก็ใช้ไม่ได้ทันที (เว็บโหมด share ที่สคริปต์เปิดจะหยุดตาม) เปิดใหม่ทุกครั้งจะได้ลิงก์ใหม่
 - ผ่านลิงก์เข้าได้แค่ตัวเว็บ, `/api`, `/uploads` และแชท (`frontend/proxy.share.mjs`) หน้าแก้ไข flow ของ Node-RED และ phpMyAdmin เข้าไม่ได้
 - คนดูล็อกอินด้วยอีเมล/รหัสผ่านได้ (รวมบัญชีตัวอย่าง) ปุ่ม Google ถูกซ่อน เพราะ Google ยอมเฉพาะ origin ที่ลงทะเบียนไว้ แต่ลิงก์เปลี่ยนทุกครั้ง
 - ⚠️ ใครได้ลิงก์ก็เข้าได้ รวมถึงล็อกอินแอดมินด้วยรหัส dev ในไฟล์นี้ ส่งให้เฉพาะคนที่ไว้ใจ หรือเปลี่ยนรหัสแอดมินก่อน

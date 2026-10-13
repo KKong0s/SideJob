@@ -3,10 +3,12 @@ setlocal EnableExtensions
 rem ==========================================================================
 rem  SideJob - share the web app through a temporary public link (double-click)
 rem    1. Make sure the API (Node-RED on port 1881) is up; starts the containers if needed
-rem    2. Start the web app in share mode on port 4300 (npm run share) in its own window
-rem    3. Open a Cloudflare Quick Tunnel and print the https://....trycloudflare.com link
-rem  The link works only while this window is open. Ctrl+C or closing it ends the link
-rem  and stops the share-mode web window. Every run gives a new link.
+rem    2. Start the web app in share mode on port 4300 (npm run share) in the background
+rem       of this same window; its output goes to %TEMP%\sidejob-share-web.log
+rem    3. Open a Cloudflare Quick Tunnel, print the https://....trycloudflare.com link
+rem       in a box and copy it to the clipboard (scripts\share-link.ps1)
+rem  The link works only while this window is open. Ctrl+C or closing the window stops
+rem  the tunnel and the share-mode web app together. Every run gives a new link.
 rem  Only the app, /api, /uploads and the chat socket are reachable through the link
 rem  (see frontend/proxy.share.mjs); the Node-RED editor and phpMyAdmin are not.
 rem  Messages are in English on purpose: Thai text breaks in old cmd consoles.
@@ -17,7 +19,10 @@ title SideJob - share link
 
 set "API_URL=http://localhost:1881/api/health"
 set "SHARE_URL=http://localhost:4300"
-set "WEB_TITLE=SideJob Share Web"
+set "WEB_LOG=%TEMP%\sidejob-share-web.log"
+rem cloudflared reports the quick tunnel link on this metrics port (read by share-link.ps1)
+if not defined METRICS_PORT set "METRICS_PORT=20241"
+set "STARTED_WEB=0"
 
 set "CLOUDFLARED=cloudflared"
 where cloudflared >nul 2>&1
@@ -69,8 +74,10 @@ if not errorlevel 1 (
   echo [2/3] The share-mode web app is already running on port 4300.
   goto :tunnel
 )
-echo [2/3] Starting the web app in share mode in a new window "%WEB_TITLE%"...
-start "%WEB_TITLE%" /d "%~dp0frontend" cmd /k npm run share
+echo [2/3] Starting the web app in share mode (log: %WEB_LOG%)...
+rem /b keeps it in this console, so Ctrl+C or closing this window stops it too
+start "" /b /d "%~dp0frontend" cmd /c "npm run share > "%WEB_LOG%" 2>&1"
+set "STARTED_WEB=1"
 set /a tries=0
 :wait_web
 ping -n 4 127.0.0.1 >nul
@@ -79,24 +86,22 @@ for /f %%c in ('curl -s -o nul -w "%%{http_code}" "%SHARE_URL%"') do set "code=%
 if "%code%"=="200" goto :tunnel
 set /a tries+=1
 if %tries% geq 60 (
-  echo [!] The web app did not start within 3 minutes. Check the "%WEB_TITLE%" window.
+  echo [!] The web app did not start within 3 minutes. See %WEB_LOG%
   goto :fail
 )
 goto :wait_web
 
 rem ---- 3. Tunnel --------------------------------------------------------------
 :tunnel
-echo [3/3] Opening the public link...
-echo.
-echo  Look for the line with https://....trycloudflare.com below (inside the box)
-echo  and send that link. Sign in with an email account (the Google button is hidden).
-echo  Keep this window open while people use it. Press Ctrl+C to stop sharing.
-echo.
-"%CLOUDFLARED%" tunnel --no-autoupdate --url %SHARE_URL%
+echo [3/3] Opening the public link, please wait...
+start "" /b powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\share-link.ps1" -MetricsPort %METRICS_PORT%
+"%CLOUDFLARED%" tunnel --no-autoupdate --loglevel warn --metrics 127.0.0.1:%METRICS_PORT% --url %SHARE_URL%
 
 echo.
 echo  Sharing stopped. The link no longer works.
-taskkill /fi "WINDOWTITLE eq %WEB_TITLE%*" /t /f >nul 2>&1
+if "%STARTED_WEB%"=="1" (
+  for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":4300 .*LISTENING"') do taskkill /pid %%p /t /f >nul 2>&1
+)
 ping -n 3 127.0.0.1 >nul
 exit /b 0
 
