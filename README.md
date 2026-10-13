@@ -136,7 +136,8 @@ npm run android        # build (configuration android) + cap sync + เปิด
 npm run build:android  # build + sync อย่างเดียว (หลังแก้โค้ดเว็บ)
 ```
 - `environment.android.ts` ชี้ไปที่ `http://10.0.2.2:1881` (= เครื่องนี้เมื่อมองจาก emulator) ถ้าใช้มือถือจริงให้เปลี่ยนเป็น IP ของเครื่องในวง LAN
-- debug build ยอมให้เรียก API แบบ http (`allowMixedContent` / `cleartext` ใน `capacitor.config.ts`) ตอนทำ release ให้ใช้ API แบบ https แล้ว build ด้วย `CAP_RELEASE=1`
+- debug build: หน้าแอปเป็น `http://localhost` (`androidScheme`) และเปิด cleartext เฉพาะ debug (`android/app/src/debug/AndroidManifest.xml`) เพื่อเรียก API / รูป / WebSocket แบบ http ได้ ต้องมี `http://localhost` ใน `CORS_ORIGINS` ตอนทำ release ให้ใช้ API แบบ https แล้ว build ด้วย `CAP_RELEASE=1`
+- build ด้วย Gradle จาก command line: ตั้ง `JAVA_HOME` (JDK 21 หรือ JBR ของ Android Studio) และ `ANDROID_HOME` แล้ว `cd frontend/android && gradlew assembleDebug`
 - ไอคอน / splash: ต้นฉบับอยู่ใน `frontend/assets/` (สร้างไฟล์ทุกขนาดใน `android/app/src/main/res` แล้ว)
 - ในแอป: Google Sign-In ใช้หน้าเลือกบัญชีของ Android (plugin `@capgo/capacitor-social-login`) และปุ่มเพิ่มรูปให้เลือก "ถ่ายรูป" หรือ "เลือกจากอัลบั้ม" (Capacitor Camera) เอกสารยืนยันร้าน (PDF) ยังใช้ตัวเลือกไฟล์
 

@@ -1,19 +1,18 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 // Debug builds talk to the local Node-RED over plain http (http://10.0.2.2:1881 from the emulator).
-// The WebView itself runs on https://localhost, so http API calls count as mixed content.
-// Build a release with CAP_RELEASE=1 (and an https API in environment.android.ts) to turn this off.
+// The app page is served from http://localhost in debug so http API calls and images are not mixed
+// content (the WebView blocks http images on an https page). Cleartext is allowed only in the debug
+// manifest (android/app/src/debug/AndroidManifest.xml).
+// Build a release with CAP_RELEASE=1 (and an https API in environment.android.ts): https://localhost.
 const release = process.env['CAP_RELEASE'] === '1';
 
 const config: CapacitorConfig = {
   appId: 'th.sidejob.app',
   appName: 'SideJob',
   webDir: 'www',
-  android: {
-    allowMixedContent: !release,
-  },
   server: {
-    cleartext: !release,
+    androidScheme: release ? 'https' : 'http',
   },
   plugins: {
     SplashScreen: {
