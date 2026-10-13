@@ -6,5 +6,5 @@ export const environment = {
   uploadsUrl: 'http://localhost:1881/uploads',
   /** Chat WebSocket (same host as the API) */
   wsUrl: 'ws://localhost:1881/ws/chat',
-  googleClientId: '',
+  googleClientId: '786500969777-nrdp5j2356h8uhs7ud9888ji8l42gk8m.apps.googleusercontent.com',
 };
