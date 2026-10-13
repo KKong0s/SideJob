@@ -25,7 +25,7 @@ function plugin(): Promise<typeof import('@capgo/capacitor-social-login')> {
 export async function nativeGoogleIdToken(): Promise<string | null> {
   const { SocialLogin } = await plugin();
   try {
-    const res = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
+    const res = await SocialLogin.login({ provider: 'google', options: {} });
     if (res.result.responseType !== 'online' || !res.result.idToken) throw new Error('No ID token from Google');
     return res.result.idToken;
   } catch (err) {

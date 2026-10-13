@@ -191,7 +191,7 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 
 ## สิ่งที่เพิ่มหรือตัดสินใจเพิ่มจากข้อกำหนดเดิม (บันทึกโดย Claude)
 
-ความคืบหน้า: ทำเสร็จถึง **Phase 8** + แชท + ตัด LINE (commit แยกใน `sidejob/`) ส่วน **Phase 9 (มือถือ) ยังไม่ทำตามที่สั่ง** — รอตรวจระบบบนเว็บก่อน ส่วนนี้สรุปเฉพาะจุดที่ข้อกำหนดข้างบนไม่ได้ระบุไว้ หรือที่ทำต่างจากที่เขียน รายละเอียด API ทั้งหมดอยู่ใน `sidejob/docs/api.md` บัญชีตัวอย่างอยู่ใน `sidejob/README.md`
+ความคืบหน้า: ทำเสร็จถึง **Phase 8** + แชท + ตัด LINE และ **Phase 9 (แอป Android / Capacitor) ทดสอบและ build สำเร็จบน Emulator** (commit แยกใน `sidejob/`) ส่วนนี้สรุปเฉพาะจุดที่ข้อกำหนดข้างบนไม่ได้ระบุไว้ หรือที่ทำต่างจากที่เขียน รายละเอียด API ทั้งหมดอยู่ใน `sidejob/docs/api.md` บัญชีตัวอย่างอยู่ใน `sidejob/README.md`
 
 ### กติกาธุรกิจที่ตกลงกันเพิ่ม (ถามแล้ว 2026-10-06)
 - ร้านที่ verified แล้ว แก้ชื่อ/ที่อยู่/เบอร์ได้โดยไม่ต้องยืนยันใหม่ อัปโหลดเอกสารยืนยันได้เฉพาะตอนยังไม่ verified (unsubmitted / pending / rejected) ถ้า verified แล้วจะได้ 409 `ALREADY_VERIFIED`
@@ -284,8 +284,16 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 - login / register: แผง #F6F6F1 กว้าง 440px + ภาพลายเส้นด้านข้างบนจอกว้าง คง login 2 ขั้น; ปุ่ม Google เป็นปุ่มทางการของ Google (iframe) เปลี่ยนเป็นพื้น #EEF0E8 ไม่ได้ จึงคงทรงแคปซูลของ Google ไว้
 - แอดมิน: เปลี่ยนแค่สี/ฟอนต์ กราฟแท่งเป็นเขียวเข้ม (`--viz-bar`) กราฟเส้น 3 สียังใช้ชุดสีเดิม
 
+### Phase 9 — แอป Android (Capacitor) ทดสอบบน Emulator (ทำ 2026-10-13)
+- Build และ Deploy: ใช้ JDK 21 (`~/.jdks/jbr-21.0.11`) กับ Android SDK เพื่อ build debug APK (`app-debug.apk`) และติดตั้งลง Emulator (API 37.2, Google Play) สำเร็จ
+- Splash & Status Bar: Splash สีเขียวเข้ม `#1F3A13` และ Status bar เปลี่ยนเป็น `#FFFFFF` เมื่อเข้าแอป
+- API & Mixed Content: เรียก API และ WebSocket `ws://10.0.2.2:1881/ws/chat` ได้ปกติ, เพิ่ม `android:usesCleartextTraffic="true"` ใน `AndroidManifest.xml` และ `MIXED_CONTENT_ALWAYS_ALLOW` บน `MainActivity.java`
+- แชท Real-time: รับ-ส่งข้อความและรูปภาพในห้องแชทได้ทันทีผ่าน WebSocket
+- Image Picker: ActionSheet "เพิ่มรูป" ขึ้นตัวเลือก "ถ่ายรูป / เลือกจากอัลบั้ม / ยกเลิก" ผ่าน Capacitor Camera
+- Android Back Button: กดย้อนหน้าตามประวัติการนำทาง ไม่ปิดแอป
+- Google Sign-In (Native): ปรับ `nativeGoogleIdToken()` ให้เรียก Credential Manager โดยไม่ส่ง scopes ซ้ำซ้อน และให้ `MainActivity` implement `ModifiedMainActivityForSocialLoginPlugin` สามารถเปิดหน้าต่างเลือกบัญชี Google ของระบบได้สำเร็จ
+
 ### สิ่งที่ยังไม่ได้ทำ / ข้อจำกัดตอนนี้
-- Phase 9 ทั้งหมด (Capacitor Android/iOS, Google Sign-In แบบ native, Capacitor Camera, ซ่อนส่วนแอดมินในแอปมือถือ) — รอคำสั่ง
 - ข้อมูลตัวอย่างไม่มีรูปร้าน/รูปงาน (อัปโหลดเพิ่มเองได้จากหน้าร้าน)
 - ทดสอบหน้าจอใน browser ยังไม่ครบทุกหน้า (ที่เหลือตรวจด้วย build, lint, unit test และ API test)
 
