@@ -88,6 +88,27 @@
             },
             "ci": {
               "progress": false
+            },
+            "share": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2mb",
+                  "maximumError": "5mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "2kb",
+                  "maximumError": "4kb"
+                }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.share.ts"
+                }
+              ],
+              "outputHashing": "all"
             }
           },
           "defaultConfiguration": "production"
@@ -103,6 +124,14 @@
             },
             "ci": {
               "progress": false
+            },
+            "share": {
+              "buildTarget": "app:build:share",
+              "port": 4300,
+              "proxyConfig": "proxy.share.mjs",
+              "allowedHosts": [".trycloudflare.com"],
+              "hmr": false,
+              "liveReload": false
             }
           },
           "defaultConfiguration": "development"

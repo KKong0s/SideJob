@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "node scripts/ng.mjs",
     "start": "node scripts/ng.mjs serve",
+    "share": "node scripts/ng.mjs serve --configuration share",
     "build": "node scripts/ng.mjs build",
     "build:android": "node scripts/ng.mjs build --configuration android && cap sync android",
     "android": "npm run build:android && cap open android",

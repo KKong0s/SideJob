@@ -290,6 +290,11 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 - cleartext เปิดเฉพาะ debug ใน `android/app/src/debug/AndroidManifest.xml` (merged manifest ของ release ไม่มี); `MainActivity` implement `ModifiedMainActivityForSocialLoginPlugin` ตามที่ plugin Google ต้องการ; `native-google.ts` ไม่ส่ง scopes (ใช้ค่าเริ่มต้นของ plugin)
 - build จาก command line ได้ทั้ง JDK 21 (`~/.jdks/jbr-21.0.11`) และ JBR ของ Android Studio (Java 25) — ลองแล้วทั้งคู่
 
+### แชร์ลิงก์ชั่วคราว (ตามที่สั่ง 2026-10-13)
+- ผู้ใช้เลือก: ลิงก์สุ่ม Cloudflare Quick Tunnel (ไม่ต้องมีบัญชี) ไม่ต้องใช้ Google ในโหมดนี้, ไม่เปลี่ยนรหัสแอดมิน (แชร์ให้โทรศัพท์ตัวเองเท่านั้น)
+- `share.bat` → เช็ก API → `npm run share` (configuration `share` ใน angular.json: build แบบ production + `environment.share.ts` URL แบบ relative + `googleClientId` ว่าง, serve พอร์ต 4300, `allowedHosts` เฉพาะ `.trycloudflare.com`, proxy `proxy.share.mjs`) → `cloudflared tunnel --url http://localhost:4300`; ปิดหน้าต่าง = ลิงก์ตาย (ทดสอบแล้วได้ 502)
+- proxy ส่งต่อเฉพาะ `/api`, `/uploads`, `/ws/chat` และตั้ง Origin ของ WebSocket เป็น `http://localhost:4200` จึงไม่ต้องแก้ backend; ทดสอบผ่านลิงก์จริงแล้ว: หน้าเว็บ, API, รูป, ล็อกอิน, WebSocket `auth.ok`, host อื่นได้ 403, path ของ Node-RED editor ตกไปหน้า SideJob
+
 ### สิ่งที่ยังไม่ได้ทำ / ข้อจำกัดตอนนี้
 - ข้อมูลตัวอย่างไม่มีรูปร้าน/รูปงาน (อัปโหลดเพิ่มเองได้จากหน้าร้าน)
 - ทดสอบหน้าจอใน browser ยังไม่ครบทุกหน้า (ที่เหลือตรวจด้วย build, lint, unit test และ API test)
