@@ -114,7 +114,7 @@
           </div>
         }
         @if (photos().length < maxPhotos) {
-          <button type="button" class="photo add" [disabled]="photoBusy()" (click)="photoInput.click()" aria-label="เพิ่มรูป">
+          <button type="button" class="photo add" [disabled]="photoBusy()" [appPickImage]="photoInput" aria-label="เพิ่มรูป">
             @if (photoBusy()) { <ion-spinner name="dots"></ion-spinner> } @else { <ion-icon name="camera-outline"></ion-icon><span>เพิ่มรูป</span> }
           </button>
         }

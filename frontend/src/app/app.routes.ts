@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 
-import { authGuard, guestGuard, onboardingGuard, profileCompleteGuard, roleGuard } from './shared/guards/auth.guards';
+import { authGuard, guestGuard, onboardingGuard, profileCompleteGuard, roleGuard, webOnlyGuard } from './shared/guards/auth.guards';
 import { AuthService } from './shared/services/auth.service';
 
 // Role areas are lazy-loaded; canMatch stops the chunk from loading for the wrong user.
@@ -45,7 +45,7 @@ export const routes: Routes = [
   },
   {
     path: 'admin',
-    canMatch: [authGuard, profileCompleteGuard, roleGuard],
+    canMatch: [webOnlyGuard, authGuard, profileCompleteGuard, roleGuard],
     data: { roles: ['admin'] },
     loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
   },

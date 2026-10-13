@@ -6,6 +6,8 @@ import { environment } from '../../../../environments/environment';
 import { SessionUser } from '../../models/session.model';
 import { AuthService } from '../../services/auth.service';
 import { toApiError } from '../../utils/api-error';
+import { nativeGoogleIdToken } from '../../utils/native-google';
+import { isNativeApp } from '../../utils/platform';
 
 // Google Identity Services global (loaded at runtime)
 declare const google: {
@@ -35,8 +37,10 @@ function loadGis(): Promise<void> {
 }
 
 /**
- * "Continue with Google" button (web). Sends the ID token to the API and, when the email already
- * belongs to a password account, asks for that password to link the two.
+ * "Continue with Google" button. The web uses Google's own button (Google Identity Services);
+ * the phone app shows our button and opens the native account picker.
+ * Sends the ID token to the API and, when the email already belongs to a password account,
+ * asks for that password to link the two.
  * Renders nothing when environment.googleClientId is empty.
  */
 @Component({
@@ -51,6 +55,7 @@ export class GoogleAuthComponent implements AfterViewInit {
   readonly signedIn = output<SessionUser>();
 
   readonly enabled = !!environment.googleClientId;
+  readonly native = isNativeApp();
   readonly buttonHost = viewChild<ElementRef<HTMLDivElement>>('buttonHost');
   readonly busy = signal(false);
   readonly error = signal('');
@@ -59,7 +64,7 @@ export class GoogleAuthComponent implements AfterViewInit {
 
   async ngAfterViewInit(): Promise<void> {
     const host = this.buttonHost()?.nativeElement;
-    if (!this.enabled || !host) return;
+    if (!this.enabled || this.native || !host) return;
     try {
       await loadGis();
       google.accounts.id.initialize({
@@ -78,6 +83,21 @@ export class GoogleAuthComponent implements AfterViewInit {
     } catch {
       this.error.set('โหลดปุ่ม Google ไม่สำเร็จ');
     }
+  }
+
+  async signInNative(): Promise<void> {
+    this.error.set('');
+    this.busy.set(true);
+    let idToken: string | null;
+    try {
+      idToken = await nativeGoogleIdToken();
+    } catch {
+      this.error.set('เข้าสู่ระบบด้วย Google ไม่สำเร็จ กรุณาลองใหม่');
+      return;
+    } finally {
+      this.busy.set(false);
+    }
+    if (idToken) await this.onCredential(idToken);
   }
 
   private async onCredential(idToken: string): Promise<void> {

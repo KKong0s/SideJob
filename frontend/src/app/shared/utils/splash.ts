@@ -1,3 +1,5 @@
+import { setStatusBar } from './status-bar';
+
 /**
  * Boot splash helpers. The splash itself is plain HTML + CSS in src/index.html so it paints
  * before Angular loads; these functions only fade it out (or show a failure message).
@@ -31,6 +33,7 @@ let splashThemeColors: string[] | null = null;
 export function showSplash(doc: Document = document, now: () => number = Date.now): void {
   const win = doc.defaultView;
   if (win) win.__sjSplashStart = now();
+  void setStatusBar('splash');
   const existing = doc.getElementById(SPLASH_ID);
   if (existing) {
     existing.classList.remove('sj-hide');
@@ -103,4 +106,5 @@ function resetThemeColor(doc: Document): void {
   metas.forEach((meta) => {
     meta.content = APP_THEME_COLOR;
   });
+  void setStatusBar('app');
 }

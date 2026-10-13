@@ -3,6 +3,7 @@ import { CanMatchFn, Router } from '@angular/router';
 
 import { Role } from '../models/session.model';
 import { AuthService } from '../services/auth.service';
+import { isNativeApp } from '../utils/platform';
 
 // Guards only shape the UX. Every rule is enforced again by the API.
 
@@ -36,4 +37,9 @@ export const roleGuard: CanMatchFn = (route) => {
   const roles = (route.data?.['roles'] ?? []) as Role[];
   const role = auth.user()?.role;
   return (!!role && roles.includes(role)) || inject(Router).parseUrl(auth.homeUrl());
+};
+
+/** Web-only areas (admin): the phone app goes to the login page instead */
+export const webOnlyGuard: CanMatchFn = () => {
+  return !isNativeApp() || inject(Router).parseUrl('/login');
 };

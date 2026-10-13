@@ -118,6 +118,28 @@ bash database/demo/seed-demo.sh   # รันซ้ำได้ ข้อมู�
 
 ถ้ายังไม่ได้ตั้งค่า ปุ่ม Google จะไม่แสดง และ API ตอบ 503 `GOOGLE_NOT_CONFIGURED`
 
+## แอป Android (Capacitor)
+
+App ID `th.sidejob.app` · ส่วนแอดมินไม่มีในแอป (แอดมินล็อกอินในแอปจะขึ้น "บัญชีแอดมินใช้งานผ่านเว็บเท่านั้น")
+
+**ครั้งแรก**
+1. ติดตั้ง Android Studio แล้วทำ Setup Wizard แบบ Standard (ได้ Android SDK) และสร้าง emulator ใน Device Manager แบบที่มี **Google Play** แล้วเพิ่มบัญชี Google ในเครื่อง emulator
+2. Google Cloud Console → Clients → Create client → ประเภท **Android**: package `th.sidejob.app` + SHA-1 ของ debug key
+   (`keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android`)
+   ไม่ต้องเอา Client ID ของ Android มาใส่ที่ไหน แอปยังใช้ Web Client ID เดิม (`environment.android.ts`) ส่วน Android client มีไว้ให้ Google ยอมรับแอปนี้
+3. เปิด backend ตามปกติ (`docker compose up -d`)
+
+**build และรัน**
+```bash
+cd frontend
+npm run android        # build (configuration android) + cap sync + เปิด Android Studio แล้วกด Run
+npm run build:android  # build + sync อย่างเดียว (หลังแก้โค้ดเว็บ)
+```
+- `environment.android.ts` ชี้ไปที่ `http://10.0.2.2:1881` (= เครื่องนี้เมื่อมองจาก emulator) ถ้าใช้มือถือจริงให้เปลี่ยนเป็น IP ของเครื่องในวง LAN
+- debug build ยอมให้เรียก API แบบ http (`allowMixedContent` / `cleartext` ใน `capacitor.config.ts`) ตอนทำ release ให้ใช้ API แบบ https แล้ว build ด้วย `CAP_RELEASE=1`
+- ไอคอน / splash: ต้นฉบับอยู่ใน `frontend/assets/` (สร้างไฟล์ทุกขนาดใน `android/app/src/main/res` แล้ว)
+- ในแอป: Google Sign-In ใช้หน้าเลือกบัญชีของ Android (plugin `@capgo/capacitor-social-login`) และปุ่มเพิ่มรูปให้เลือก "ถ่ายรูป" หรือ "เลือกจากอัลบั้ม" (Capacitor Camera) เอกสารยืนยันร้าน (PDF) ยังใช้ตัวเลือกไฟล์
+
 ## ทดสอบ
 
 ```bash

@@ -6,9 +6,17 @@ import { Observable, firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { AuthResponse, Role, SeekerProfileInput, SessionUser, ShopProfileInput } from '../models/session.model';
-import { silentErrors, toApiError } from '../utils/api-error';
+import { AppError, silentErrors, toApiError } from '../utils/api-error';
+import { isNativeApp } from '../utils/platform';
 
 const TOKEN_KEY = 'sidejob.token';
+
+/** The admin area is web only: the phone app refuses admin sessions */
+const ADMIN_WEB_ONLY = new AppError({
+  status: 403,
+  code: 'ADMIN_WEB_ONLY',
+  message: 'บัญชีแอดมินใช้งานผ่านเว็บเท่านั้น',
+});
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -29,7 +37,8 @@ export class AuthService {
     if (!value) return;
     this.tokenState.set(value);
     try {
-      await this.refresh();
+      const user = await this.refresh();
+      if (isNativeApp() && user.role === 'admin') await this.clearSession();
     } catch (err) {
       const { status } = toApiError(err);
       if (status === 401 || status === 403) await this.clearSession();
@@ -117,6 +126,7 @@ export class AuthService {
 
   private async startSession(request: Observable<AuthResponse>): Promise<SessionUser> {
     const res = await firstValueFrom(request);
+    if (isNativeApp() && res.user.role === 'admin') throw ADMIN_WEB_ONLY;
     this.tokenState.set(res.token);
     this.userState.set(res.user);
     await Preferences.set({ key: TOKEN_KEY, value: res.token });

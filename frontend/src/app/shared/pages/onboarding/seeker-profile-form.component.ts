@@ -24,6 +24,7 @@ import { AuthService } from '../../services/auth.service';
 import { GeoService } from '../../services/geo.service';
 import { toApiError } from '../../utils/api-error';
 import { minAge, normalisePhone, thaiPhone, yearsAgo } from './profile-validators';
+import { PickImageDirective } from '../../directives/pick-image.directive';
 
 const MIN_AGE = 18;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -42,6 +43,7 @@ interface Area {
   templateUrl: 'seeker-profile-form.component.html',
   styleUrls: ['profile-form.scss'],
   imports: [
+    PickImageDirective,
     ReactiveFormsModule,
     IonAvatar,
     IonButton,

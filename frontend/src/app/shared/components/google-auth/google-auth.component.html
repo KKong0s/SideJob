@@ -1,7 +1,16 @@
 @if (enabled) {
   <div class="divider"><span>หรือ</span></div>
 
-  <div #buttonHost class="google-button" [hidden]="!!link()"></div>
+  @if (native) {
+    @if (!link()) {
+      <ion-button expand="block" class="native-google" [disabled]="busy()" (click)="signInNative()">
+        <img slot="start" src="assets/icon/google-g.svg" alt="" width="20" height="20" />
+        ดำเนินการต่อด้วย Google
+      </ion-button>
+    }
+  } @else {
+    <div #buttonHost class="google-button" [hidden]="!!link()"></div>
+  }
 
   @if (link(); as l) {
     <div class="link-box">

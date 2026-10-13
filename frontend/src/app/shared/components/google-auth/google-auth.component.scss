@@ -35,3 +35,16 @@
   margin-top: 8px;
   text-align: center;
 }
+
+// Phone app: our own button (the web shows Google's iframe button instead)
+.native-google {
+  --background: var(--sj-chip);
+  --background-hover: var(--sj-selected);
+  --background-activated: var(--sj-selected);
+  --color: var(--ion-color-primary);
+  margin: 0;
+
+  img {
+    margin-inline-end: 10px;
+  }
+}

@@ -1,4 +1,8 @@
-# Boot splash on the phone apps (Capacitor) — todo for Phase 9
+# Boot splash on the phone apps (Capacitor)
+
+> **Done in Phase 9 (Android):** `capacitor.config.ts` (SplashScreen + StatusBar), `frontend/assets/*.png` sources,
+> generated `android/app/src/main/res` sizes, Android 12+ splash colors in `values/styles.xml`, and
+> `shared/utils/status-bar.ts` (switched from `splash.ts`). The notes below are the original plan.
 
 The web boot splash (runner illustration) lives in `frontend/src/index.html` and is faded out by
 `hideSplash()` in `frontend/src/app/shared/utils/splash.ts`, called from `main.ts` once the first

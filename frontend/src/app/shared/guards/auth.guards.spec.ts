@@ -1,11 +1,14 @@
 import { WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Route, Router, UrlTree, provideRouter } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 
 import { OnboardingStep, Role, SessionUser } from '../models/session.model';
 import { AuthService } from '../services/auth.service';
-import { authGuard, guestGuard, onboardingGuard, profileCompleteGuard, roleGuard } from './auth.guards';
+import { toApiError } from '../utils/api-error';
+import { authGuard, guestGuard, onboardingGuard, profileCompleteGuard, roleGuard, webOnlyGuard } from './auth.guards';
 
 function makeUser(role: Role | null, step: OnboardingStep): SessionUser {
   return {
@@ -71,5 +74,29 @@ describe('auth guards', () => {
     signIn(makeUser('seeker', 'done'));
     expect(run(roleGuard, { roles: ['seeker'] })).toBe(true);
     expect(url(run(roleGuard, { roles: ['admin'] }))).toBe('/seeker/search');
+  });
+
+  describe('phone app (admin is web only)', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('webOnlyGuard allows the browser and sends the app to /login', () => {
+      expect(run(webOnlyGuard)).toBe(true);
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      expect(url(run(webOnlyGuard))).toBe('/login');
+    });
+
+    it('the app refuses an admin login without saving the session', async () => {
+      TestBed.configureTestingModule({ providers: [provideHttpClientTesting()] });
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      const auth = TestBed.inject(AuthService);
+      const http = TestBed.inject(HttpTestingController);
+
+      const login = auth.login('admin@example.com', 'secret');
+      http.expectOne((r) => r.url.endsWith('/auth/login')).flush({ token: 't', user: makeUser('admin', 'done') });
+
+      await expect(login).rejects.toSatisfy((err) => toApiError(err).code === 'ADMIN_WEB_ONLY');
+      expect(auth.isLoggedIn()).toBe(false);
+      expect(auth.token()).toBeNull();
+    });
   });
 });

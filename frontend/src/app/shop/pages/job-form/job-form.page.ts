@@ -40,6 +40,7 @@ import { dateBetween } from '../../../shared/utils/date-validators';
 import { todayIso } from '../../../shared/utils/format';
 import { LoadState, errorState } from '../../../shared/utils/paged-list';
 import { IMAGE_TYPES, checkUpload } from '../../../shared/utils/upload';
+import { PickImageDirective } from '../../../shared/directives/pick-image.directive';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const MAX_JOB_IMAGES = 5;
@@ -57,6 +58,7 @@ interface PhotoItem {
   templateUrl: 'job-form.page.html',
   styleUrls: ['job-form.page.scss'],
   imports: [
+    PickImageDirective,
     ReactiveFormsModule,
     IonHeader,
     IonToolbar,

@@ -31,6 +31,7 @@ import { silentErrors } from '../../utils/api-error';
 import { thaiDate } from '../../utils/format';
 import { LoadState, errorState } from '../../utils/paged-list';
 import { IMAGE_TYPES, checkUpload, takeFile } from '../../utils/upload';
+import { PickImageDirective } from '../../directives/pick-image.directive';
 
 /** One conversation: history (older pages on scroll up), live messages over the socket, text + image sending */
 @Component({
@@ -38,6 +39,7 @@ import { IMAGE_TYPES, checkUpload, takeFile } from '../../utils/upload';
   templateUrl: 'chat-room.page.html',
   styleUrls: ['chat-room.page.scss'],
   imports: [
+    PickImageDirective,
     FormsModule,
     IonHeader,
     IonToolbar,

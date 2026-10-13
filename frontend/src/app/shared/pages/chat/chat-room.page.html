@@ -68,7 +68,7 @@
     @if (c.canSend) {
       <ion-toolbar class="composer">
         <ion-buttons slot="start">
-          <ion-button (click)="imageInput.click()" [disabled]="sending()" aria-label="ส่งรูป">
+          <ion-button [appPickImage]="imageInput" [disabled]="sending()" aria-label="ส่งรูป">
             <ion-icon slot="icon-only" name="image-outline"></ion-icon>
           </ion-button>
         </ion-buttons>

@@ -48,12 +48,14 @@ import { ShopService } from '../../../shared/services/shop.service';
 import { thaiDateTime } from '../../../shared/utils/format';
 import { Loader } from '../../../shared/utils/loader';
 import { DOCUMENT_TYPES, IMAGE_TYPES, checkUpload, takeFile } from '../../../shared/utils/upload';
+import { PickImageDirective } from '../../../shared/directives/pick-image.directive';
 
 @Component({
   selector: 'app-shop-profile',
   templateUrl: 'shop-profile.page.html',
   styleUrls: ['shop-profile.page.scss'],
   imports: [
+    PickImageDirective,
     BellButtonComponent,
     IonHeader,
     IonToolbar,

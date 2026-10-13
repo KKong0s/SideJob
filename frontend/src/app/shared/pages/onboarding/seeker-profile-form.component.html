@@ -8,7 +8,7 @@
       }
     </ion-avatar>
     <div>
-      <ion-button fill="outline" size="small" (click)="fileInput.click()">เลือกรูปโปรไฟล์</ion-button>
+      <ion-button fill="outline" size="small" [appPickImage]="fileInput">เลือกรูปโปรไฟล์</ion-button>
       <ion-note>JPG หรือ PNG ไม่เกิน 5 MB (ไม่บังคับ)</ion-note>
       @if (avatarError()) {
         <ion-note color="danger">{{ avatarError() }}</ion-note>
