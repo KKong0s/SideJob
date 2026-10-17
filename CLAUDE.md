@@ -191,7 +191,7 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 
 ## สิ่งที่เพิ่มหรือตัดสินใจเพิ่มจากข้อกำหนดเดิม (บันทึกโดย Claude)
 
-ความคืบหน้า: ทำเสร็จถึง **Phase 8** + แชท + ตัด LINE และ **Phase 9 (แอป Android / Capacitor)** ทดสอบบน emulator แล้ว (ดูหัวข้อ Phase 9) (commit แยกใน `sidejob/`) ส่วนนี้สรุปเฉพาะจุดที่ข้อกำหนดข้างบนไม่ได้ระบุไว้ หรือที่ทำต่างจากที่เขียน รายละเอียด API ทั้งหมดอยู่ใน `sidejob/docs/api.md` บัญชีตัวอย่างอยู่ใน `sidejob/README.md`
+ความคืบหน้า: ทำเสร็จถึง **Phase 8** + แชท + ตัด LINE (commit แยกใน `sidejob/`) และ **Phase 9 (มือถือ) ทำแล้วเฉพาะ Android** (2026-10-13) ทดสอบบน emulator แล้ว (ดูหัวข้อ Phase 9) ส่วนนี้สรุปเฉพาะจุดที่ข้อกำหนดข้างบนไม่ได้ระบุไว้ หรือที่ทำต่างจากที่เขียน รายละเอียด API ทั้งหมดอยู่ใน `sidejob/docs/api.md` บัญชีตัวอย่างอยู่ใน `sidejob/README.md`
 
 ### กติกาธุรกิจที่ตกลงกันเพิ่ม (ถามแล้ว 2026-10-06)
 - ร้านที่ verified แล้ว แก้ชื่อ/ที่อยู่/เบอร์ได้โดยไม่ต้องยืนยันใหม่ อัปโหลดเอกสารยืนยันได้เฉพาะตอนยังไม่ verified (unsubmitted / pending / rejected) ถ้า verified แล้วจะได้ 409 `ALREADY_VERIFIED`
@@ -272,7 +272,7 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 ### หน้าเข้าสู่ระบบแบบใหม่ (ตามที่สั่ง 2026-10-10)
 - (หน้าตาถูกแทนด้วยดีไซน์ "ลายเส้นคลีน + เขียวมะนาว" ด้านล่างแล้ว)
 - login เป็น 2 ขั้น: อีเมล → "ถัดไป" → รหัสผ่าน (แสดงอีเมลเป็นชิป กดเพื่อเปลี่ยนได้) รหัสผิดจะล้างช่องให้กรอกใหม่ ไม่ได้แก้ API
-- Google Sign-In: ผู้ใช้ขอพักไว้ก่อน ปุ่มยังซ่อนอยู่เพราะยังไม่ได้ใส่ `GOOGLE_CLIENT_ID` (โค้ดพร้อมแล้ว ใส่ Client ID ตาม README ก็ใช้ได้)
+- Google Sign-In: เปิดใช้แล้ว (2026-10-13) Client ID อยู่ใน `.env` (`GOOGLE_CLIENT_ID`) และ `environment.ts` / `environment.prod.ts` — OAuth consent screen ยังเป็นโหมด Testing ล็อกอินได้เฉพาะ test users ที่เพิ่มใน Google Cloud Console; ไม่ใช้ client secret (ตรวจแค่ ID token)
 
 ### ดีไซน์ "ลายเส้นคลีน + เขียวมะนาว" (ตามสเปกท้ายไฟล์, ทำ 2026-10-10)
 - ตัดสินใจกับผู้ใช้: **โหมดสว่างอย่างเดียว** (เอา dark mode อัตโนมัติออก) และ**ฝังฟอนต์ในแอป** ด้วย `@fontsource/prompt` + `@fontsource/anuphan` แทน Google Fonts (ใช้ได้ออฟไลน์สำหรับ Phase 9) เอา Noto Sans Thai ออก
@@ -284,7 +284,29 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 - login / register: แผง #F6F6F1 กว้าง 440px + ภาพลายเส้นด้านข้างบนจอกว้าง คง login 2 ขั้น; ปุ่ม Google เป็นปุ่มทางการของ Google (iframe) เปลี่ยนเป็นพื้น #EEF0E8 ไม่ได้ จึงคงทรงแคปซูลของ Google ไว้
 - แอดมิน: เปลี่ยนแค่สี/ฟอนต์ กราฟแท่งเป็นเขียวเข้ม (`--viz-bar`) กราฟเส้น 3 สียังใช้ชุดสีเดิม
 
-### Phase 9 — แอป Android (Capacitor) (ทำ 2026-10-13)
+### Motion + boot splash (ตามที่สั่ง 2026-10-13)
+- Motion แบบมีหน้าที่ ไม่เปลี่ยนหน้าตา: token `--sj-ease-out` / `--sj-dur-*` และ keyframes กลาง (`sj-rise`, `sj-slide-in`, `sj-pop`, `sj-bubble-in`, `sj-fade`) ใน `global.scss` มีเวอร์ชัน reduced-motion แบบเฟดอย่างเดียว
+  - ปุ่ม/ชิป/pill ยุบตอนกด, แถวงานเลื่อนเข้า stagger ≤ 300ms (`--sj-i`), badge กระดิ่งเด้งเฉพาะตอนเพิ่มขึ้น, bookmark เด้งตอนบันทึก, login ขั้น 2 เลื่อนเข้า, bubble แชทล่าสุด, empty/error เฟด
+  - จุดเด่นจุดเดียว: เส้นประใน `student-phone.svg` วาดจากมือถือไปการ์ดงานครั้งเดียว (CSS ในไฟล์ SVG)
+  - `page-state` มี input `skeleton="job" | "job-grid"` ให้ skeleton ทรงเดียวกับแถวงาน
+- Boot splash (คนวิ่ง): HTML + CSS ใน `src/index.html`, ซ่อนด้วย `hideSplash()` ใน `shared/utils/splash.ts` (ขั้นต่ำ **1.5 วินาที** ตามที่ผู้ใช้ขอให้เห็นชัดขึ้น (สเปกเดิม 800ms), จาง 300ms แล้วลบ) เรียกใน `main.ts` **หลัง navigation แรกจบ** (ไม่นับ cancel จาก guard redirect) เพื่อไม่ให้เห็นหน้า login แวบ; bootstrap พัง → `failSplash()` แสดง "โหลดไม่สำเร็จ"
+  - เพิ่มจากสเปกเพื่อมือถือ: `100dvh` + safe-area, จอเตี้ย ≤ 700px ย่อระยะ, มือถือแนวนอนใช้แบบมือถือจัดภาพข้างข้อความ, `<meta name="theme-color">` เขียวเข้มตอน splash แล้วคืนเป็นขาว
+  - แสดงอีกครั้ง**หลังกดเข้าสู่ระบบ** (อีเมลและ Google): `showSplash()` ใน `LoginPage.goHome()` แล้ว `hideSplash()` เมื่อไปถึงหน้าแรกของ role (ผู้ใช้เลือก 2026-10-13) ไม่แสดงตอนออกจากระบบ
+  - Capacitor ยังไม่ได้ตั้งค่า → ข้ามส่วน native splash / status bar ไว้ใน `docs/mobile-splash.md` (ค่าที่ต้องตั้ง + ขนาดรูป)
+- `.impeccable/config.json` เก็บ ignore ของ design detector (false positive `broken-image` จาก `[src]` binding)
+
+### ล้างพื้นที่ที่เลือก (ตามที่สั่ง 2026-10-13)
+- Modal เลือกพื้นที่มีปุ่ม "ล้าง" มุมขวาบน (แสดงเมื่อเลือกไปแล้วหรือพิมพ์ค้นหา) ล้างทุกอย่างแล้วกลับไปขั้นเลือกภาค ยังไม่ปิด modal ใช้ได้ทั้งหน้าค้นหาและ "พื้นที่ที่สนใจ" ในโปรไฟล์
+- หน้าค้นหา: ปุ่มวงกลม ✕ ข้างปุ่มพื้นที่ (แสดงเมื่อเลือกจังหวัดไว้) กดแล้วกลับเป็น "ทุกพื้นที่" ทันที
+
+### Phase 9 — มือถือ (ทำ 2026-10-13)
+- ผู้ใช้เลือก: App ID `th.sidejob.app`, **Android อย่างเดียว** (ไม่สร้าง iOS เพราะเครื่องเป็น Windows), ทดสอบบน emulator
+- `frontend/capacitor.config.ts` + โฟลเดอร์ `frontend/android/`; build ด้วย `npm run build:android` (configuration `android` ใน angular.json → `environment.android.ts` ชี้ `http://10.0.2.2:1881`) (debug ใช้ http ดูด้านล่าง)
+- Google แบบ native: `@capgo/capacitor-social-login` (Credential Manager) ขอ ID token ที่ audience = **Web Client ID เดิม** backend ไม่ต้องแก้; ต้องมี OAuth client ประเภท Android (package + SHA-1 ของ debug key) ใน Google Cloud Console ด้วย ปุ่มในแอปเป็นปุ่มของเราเอง (พื้น #EEF0E8) ส่วนเว็บยังใช้ปุ่ม GIS เดิม
+- กล้อง: directive `appPickImage` (`shared/directives/pick-image.directive.ts`) แทน `input.click()` ใน 4 จุด (รูปโปรไฟล์, รูปร้าน, รูปงาน, รูปในแชท) บนเว็บเปิดตัวเลือกไฟล์เหมือนเดิม ในแอปถาม "ถ่ายรูป / เลือกจากอัลบั้ม" (Capacitor Camera ย่อเหลือ 1600px) แล้วส่งไฟล์เข้า input เดิม handler ของหน้าไม่ได้แก้; เอกสารยืนยันร้าน (PDF) ใช้ตัวเลือกไฟล์
+- ซ่อนแอดมินในแอป: `webOnlyGuard` บน `/admin` และ `AuthService` ไม่รับ session ของ admin ในแอป (error `ADMIN_WEB_ONLY` "บัญชีแอดมินใช้งานผ่านเว็บเท่านั้น") — เป็นแค่ฝั่ง frontend, API ไม่ได้แก้
+- เพิ่ม `@capacitor/app` (ปุ่ม Back ของ Android), splash / status bar ตาม `docs/mobile-splash.md` (`shared/utils/status-bar.ts` เรียกจาก `splash.ts`), ไอคอนแอปใหม่ = วงกลมมะนาว + "S" บนพื้นเขียวเข้ม (ต้นฉบับใน `frontend/assets/`, สร้างทุกขนาดเองเพราะ `@capacitor/assets` ใช้ sharp รุ่นเก่าที่พังบน Node 24)
+
 - **ทดสอบบน emulator** (Medium_Phone, API 37.2, Google Play; ตรวจซ้ำ 2026-10-13): ผ่าน = build/ติดตั้ง APK, status bar, เรียก API ผ่าน 10.0.2.2, ล็อกอิน seeker, แอดมินถูกปฏิเสธ, ปุ่ม Back, action sheet เพิ่มรูป, แชท real-time (WebSocket) + รูปในแชทแสดงได้; **ยังไม่ยืนยัน** = Google Sign-In จนเข้าแอปได้จริง (ทดสอบแค่หน้าเลือกบัญชีเปิดขึ้น) และถ่ายรูป/เลือกรูปจนอัปโหลดในแอป
 - debug ใช้ `server.androidScheme: 'http'` (หน้าแอปเป็น `http://localhost`) เพราะ WebView บล็อกรูป `http://` บนหน้า `https://localhost` (mixed content) แม้ตั้ง `MIXED_CONTENT_ALWAYS_ALLOW` แล้ว — `CORS_ORIGINS` ใน `.env` จึงมี `http://localhost` เพิ่ม; release (`CAP_RELEASE=1`) กลับเป็น https
 - cleartext เปิดเฉพาะ debug ใน `android/app/src/debug/AndroidManifest.xml` (merged manifest ของ release ไม่มี); `MainActivity` implement `ModifiedMainActivityForSocialLoginPlugin` ตามที่ plugin Google ต้องการ; `native-google.ts` ไม่ส่ง scopes (ใช้ค่าเริ่มต้นของ plugin)
@@ -296,6 +318,7 @@ push notification, แชทในแอป, LINE Login, ระบบชำร�
 - proxy ส่งต่อเฉพาะ `/api`, `/uploads`, `/ws/chat` และตั้ง Origin ของ WebSocket เป็น `http://localhost:4200` จึงไม่ต้องแก้ backend; ทดสอบผ่านลิงก์จริงแล้ว: หน้าเว็บ, API, รูป, ล็อกอิน, WebSocket `auth.ok`, host อื่นได้ 403, path ของ Node-RED editor ตกไปหน้า SideJob
 
 ### สิ่งที่ยังไม่ได้ทำ / ข้อจำกัดตอนนี้
+- Phase 9: ไม่มี iOS, ยังไม่มี release keystore (ทดสอบเฉพาะ debug build), Google Sign-In ในแอปยังไม่ได้ยืนยันว่าล็อกอินสำเร็จ
 - ข้อมูลตัวอย่างไม่มีรูปร้าน/รูปงาน (อัปโหลดเพิ่มเองได้จากหน้าร้าน)
 - ทดสอบหน้าจอใน browser ยังไม่ครบทุกหน้า (ที่เหลือตรวจด้วย build, lint, unit test และ API test)
 

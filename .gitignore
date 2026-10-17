@@ -20,3 +20,19 @@ backend/externalModules/
 .DS_Store
 Thumbs.db
 .idea/
+
+# Media files (audio / video)
+*.mp4
+*.mov
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.webm
+*.avi
+*.mkv
+
+# Temporary archives / captures
+*.tgz
+*.tar.gz
+
